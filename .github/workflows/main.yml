@@ -1,0 +1,30 @@
+name: Build on Tag
+on:
+  push:
+    tags: '*'
+    branches: main                                   # Branch to build.
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout kernel source
+      uses: actions/checkout@v2
+
+    - name: Android kernel build
+      uses: malikh0206/android-kernel-actions-modif1@master
+      id: build
+      env:
+        NAME: Custom-Kernel-A32
+      with:
+        arch: arm64
+        compiler: clang/9/binutils
+        defconfig: a32_defconfig
+        image: Image.gz
+
+    - name: Release build on git
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: ${{ steps.build.outputs.outfile }}
+        token: ${{ secrets.GITHUB_TOKEN }}
