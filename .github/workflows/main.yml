@@ -31,7 +31,7 @@ jobs:
     # The GitHub token (if not provided the environment variable GITHUB_TOKEN will be used instead)
         github_token: ${{ secrets.GITHUB_TOKEN }} # optional
     # The commit sha
-        sha: ${{ GITHUB_SHA }} # optional
+        sha: ffac537e6cbbf934b08745a378932722df287a53 # optional
     # The tag name
         tag: ${{ GITHUB_RUN_NUMBER }}
     # The message
