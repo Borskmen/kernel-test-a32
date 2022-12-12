@@ -20,7 +20,7 @@ jobs:
       with:
         arch: arm64
         compiler: clang/9/binutils
-        defconfig: a32_defconfig
+        defconfig: a32_eur_open_defconfig
         image: Image.gz
 
     - name: Release build on git
