@@ -5,26 +5,44 @@ on:
     branches: main                                   # Branch to build.
   workflow_dispatch:
 
+
 jobs:
   build:
+    name: Create Release
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout kernel source
-      uses: actions/checkout@v2
+     - name: Checkout code
+       uses: actions/checkout@v2
+     - name: Create Release
+       id: create_release
+       uses: actions/create-release@v1
+       env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+       with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            Changes in this Release
+            - New try
+          draft: false
+          prerelease: false
+          
+     - name: Checkout kernel source
+       uses: actions/checkout@v2
 
-    - name: Android kernel build
-      uses: malikh0206/android-kernel-actions-modif1@master
-      id: build
-      env:
+     - name: Android kernel build
+       uses: malikh0206/android-kernel-actions-modif1@master
+       id: build
+       env:
         NAME: Custom-Kernel-A32
-      with:
+       with:
         arch: arm64
         compiler: clang/9/binutils
         defconfig: a32_eur_open_defconfig
         image: Image.gz
 
-    - name: Release build on git                   
-      uses: ncipollo/release-action@v1
-      with:
+     - name: Release build on git                   
+       uses: ncipollo/release-action@v1
+       with:
         artifacts: ${{ steps.build.outputs.outfile }}
         token: ${{ secrets.GITHUB_TOKEN }}
