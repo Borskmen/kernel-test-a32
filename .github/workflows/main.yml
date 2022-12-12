@@ -23,19 +23,17 @@ jobs:
         defconfig: a32_eur_open_defconfig
         image: Image.gz
 
-    - name: Create an Tag
-  # You may pin to the exact commit or the version.
-  # uses: simpleactions/create-tag@d5c32a2d86b1f96142bbe1ebe8b3b62b0a0587ff
-      uses: simpleactions/create-tag@v1.0.0
+    - name: ntd - create tag
+      # You may pin to the exact commit or the version.
+      # uses: nocnoc-th-devops/github-actions-create-tag@1bdaa4abc4b55b1a385289702d7507406275a828
+      uses: nocnoc-th-devops/github-actions-create-tag@v0.0.4
       with:
-    # The GitHub token (if not provided the environment variable GITHUB_TOKEN will be used instead)
-        github_token: ${{ secrets.GITHUB_TOKEN }} # optional
-    # The commit sha
-        sha: ffac537e6cbbf934b08745a378932722df287a53 # optional
-    # The tag name
-        tag: ${{ GITHUB_RUN_NUMBER }}
-    # The message
-        message: New release
+        # GitHub token
+        token: ${{ secrets.GITHUB_TOKEN }}
+        # tag name
+        name: ${{ GITHUB_RUN_NUMBER }} # default is 0.0.0
+
+
 
     - name: Release build on git                   
       uses: ncipollo/release-action@v1
