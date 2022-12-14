@@ -34,4 +34,4 @@ jobs:
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
       with:
-        files: ${{ env.working-directory }}/zipper/Kernel_Package.zip
+        files: /home/runner/work/kernel-test-a32/kernel-test-a32/zipper/Kernel_Package.zip
