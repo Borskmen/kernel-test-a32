@@ -1,48 +1,37 @@
-name: Build on Tag
+name: Build on push master
+
 on:
   push:
-    tags: '*'
-    branches: main                                   # Branch to build.
-  workflow_dispatch:
-
+    tags: [ '*' ]
 
 jobs:
   build:
-    name: Create Release
     runs-on: ubuntu-latest
     steps:
-     - name: Checkout code
-       uses: actions/checkout@v2
-     - name: Create Release
-       id: create_release
-       uses: actions/create-release@v1
-       env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-       with:
-          tag_name: ${{ GITHUB_RUN_NUMBER }}
-          release_name: Release ${{ GITHUB_RUN_NUMBER }}
-          body: |
-            Changes in this Release
-            - New try
-          draft: false
-          prerelease: false
-          
-     - name: Checkout kernel source
-       uses: actions/checkout@v2
+    
+    - uses: actions/setup-node@v3
+    - name: Checkout kernel source
+      uses: actions/checkout@v3
 
-     - name: Android kernel build
-       uses: malikh0206/android-kernel-actions-modif1@master
-       id: build
-       env:
+    - name: Checkout zipper
+      uses: actions/checkout@v3
+      with:
+        repository: malikh0206/AnyKernel3-for-A32
+        path: zipper
+
+    - name: Android kernel build
+      uses: alix1383/android-kernel-actions@master
+      id: build
+      env:
         NAME: Custom-Kernel-A32
-       with:
+      with:
         arch: arm64
-        compiler: clang/9/binutils
+        compiler: proton-clang/master/binutils
         defconfig: a32_eur_open_defconfig
         image: Image.gz
-
-     - name: Release build on git                   
-       uses: ncipollo/release-action@v1
-       with:
-        artifacts: ${{ steps.build.outputs.outfile }}
-        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: ${{ env.working-directory }}/zipper/Kernel_Package.zip
