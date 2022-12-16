@@ -395,9 +395,6 @@
 #define SEC_GPIO_REF(src, type, num)	&type num
 #define SEC_GPIO_NUM(src, type, num)	num
 #define SEC_GPIO_TYPE(src, type, num)	&type
-#define SEC_GPIO_PHANDLE_ACTIVE(src, type, num)	SEC_GPIO_PHANDLE(type, num, active)
-#define SEC_GPIO_PHANDLE_SLEEP(src, type, num)	SEC_GPIO_PHANDLE(type, num, sleep)
-#define SEC_GPIO_PHANDLE(type, num, mode)	type##_##num##_##mode
 
 #define MTK_PINMUX(gpio, func) (MTK_PIN_NO(gpio) | func)
 
@@ -708,8 +705,6 @@
 							54 186 21 58 179 255 179 253 112
 							248 195 191 252 23 21 8 5 16>;
 				light-position = /bits/ 32 <8 69 4 22 2 0>;
-				fcd-axis = <0>;
- 				fcd-threshold = <700>;
 			};
 		};
 	};
@@ -1816,9 +1811,9 @@
 
 /* #include "../sm5714_fuelgauge.dtsi" */            /* From sm5714_fuelgauge.py */
 /*
- * sm5714 battery device tree common
+ * Vogue battery device tree common
  *
- * Copyright (c) 2021 Samsung Electronics Co., Ltd.
+ * Copyright (c) 2018 Samsung Electronics Co., Ltd.
  *		http://www.samsung.com
  *
  * This program is free software; you can redistribute it and/or modify
@@ -1840,12 +1835,6 @@
 		fuelgauge,sw_v_empty_voltage = <3200>;
 		fuelgauge,sw_v_empty_voltage_cisd = <3100>;
 		fuelgauge,sw_v_empty_recover_voltage = <3480>;
-#if 0
-		fuelgauge,bat_id_gpio = <
-				SEC_GPIO_REF(${bat_id_gpio_02}) 0  /* BAT_ID_2 */
-				SEC_GPIO_REF(${bat_id_gpio_01}) 0  /* BAT_ID_1 */
-				>;
-#endif
 		battery_params {
 			battery,id = <0>;
 			battery0,battery_type = <4400 0x1D44>; /* batt_v_max, cap */

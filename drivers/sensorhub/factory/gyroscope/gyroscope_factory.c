@@ -12,7 +12,6 @@
  *  GNU General Public License for more details.
  *
  */
-
 #include "../../sensor/gyroscope.h"
 #include "../../sensorhub/shub_device.h"
 #include "../../sensormanager/shub_sensor.h"
@@ -124,7 +123,6 @@ get_chipset_dev_attrs get_gyro_chipset_dev_attrs[] = {
 	get_gyroscope_icm42605m_dev_attrs,
 	get_gyroscope_lsm6dsl_dev_attrs,
 	get_gyroscope_lsm6dsotr_dev_attrs,
-	get_gyroscope_icm42632m_dev_attrs,
 };
 
 void initialize_gyroscope_sysfs(void)
@@ -145,8 +143,8 @@ void initialize_gyroscope_sysfs(void)
 		return;
 	}
 
-	for (i = 0; i < ARRAY_SIZE(get_gyro_chipset_dev_attrs); i++) {
-		chipset_attrs = get_gyro_chipset_dev_attrs[i](sensor->spec.name);
+	for (i = 0; i < ARRAY_LEN(get_gyro_chipset_dev_attrs); i++) {
+		chipset_attrs = get_gyro_chipset_dev_attrs[i](sensor->chipset_name);
 		if (chipset_attrs) {
 			ret = add_sensor_device_attr(gyro_sysfs_device, chipset_attrs);
 			if (ret < 0) {

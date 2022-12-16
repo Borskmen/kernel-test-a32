@@ -126,28 +126,17 @@ signed int battery_get_bat_current_mA(void)
 
 signed int battery_get_soc(void)
 {
-	struct mtk_battery *gm = get_mtk_battery();
-
-	if (gm != NULL)
-		return gm->soc;
-	else
-		return 50;
+	return get_mtk_battery()->soc;
 }
 
 signed int battery_get_precise_soc(void)
 {
-	struct mtk_battery *gm = get_mtk_battery();
-
-	if (gm != NULL)
-		return gm->precise_soc;
-	else
-		return 500;
+	return get_mtk_battery()->precise_soc;
 }
 
 signed int battery_get_uisoc(void)
 {
 	int boot_mode = get_boot_mode();
-	struct mtk_battery *gm = get_mtk_battery();
 
 	if ((boot_mode == META_BOOT) ||
 		(boot_mode == ADVMETA_BOOT) ||
@@ -155,16 +144,12 @@ signed int battery_get_uisoc(void)
 		(boot_mode == ATE_FACTORY_BOOT))
 		return 75;
 
-	if (gm != NULL)
-		return gm->ui_soc;
-	else
-		return 50;
+	return get_mtk_battery()->ui_soc;
 }
 
 signed int battery_get_precise_uisoc(void)
 {
 	int boot_mode = get_boot_mode();
-	struct mtk_battery *gm = get_mtk_battery();
 
 	if ((boot_mode == META_BOOT) ||
 		(boot_mode == ADVMETA_BOOT) ||
@@ -172,10 +157,7 @@ signed int battery_get_precise_uisoc(void)
 		(boot_mode == ATE_FACTORY_BOOT))
 		return 750;
 
-	if (gm != NULL)
-		return gm->precise_ui_soc;
-	else
-		return 500;
+	return get_mtk_battery()->precise_ui_soc;
 }
 
 signed int battery_get_bat_temperature(void)

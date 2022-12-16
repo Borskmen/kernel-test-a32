@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (C) 2015-2021 Samsung Electronics Co. Ltd.
+ * Copyright (C) 2015-2020 Samsung Electronics Co. Ltd.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
- /* usb notify layer v3.6 */
+ /* usb notify layer v3.5 */
 
 #define pr_fmt(fmt) "usb_notify: " fmt
 
@@ -70,7 +70,7 @@ static struct dev_table update_autotimer_device_table[] = {
 
 static struct dev_table unsupport_device_table[] = {
 	{ .dev = { USB_DEVICE(0x1a0a, 0x0201), },
-	}, /* The device for usb certification */
+	},
 	{}
 };
 
@@ -316,7 +316,6 @@ static void check_device_speed(struct usb_device *dev, bool on)
 	struct usb_device *udev;
 	int port = 0;
 	int speed = USB_SPEED_UNKNOWN;
-	int pr_speed = USB_SPEED_UNKNOWN;
 	static int hs_hub;
 	static int ss_hub;
 
@@ -324,8 +323,6 @@ static void check_device_speed(struct usb_device *dev, bool on)
 		pr_err("%s otg_notify is null\n", __func__);
 		return;
 	}
-
-	pr_speed = get_con_dev_max_speed(o_notify);
 
 	hdev = dev->parent;
 	if (!hdev)
@@ -357,16 +354,16 @@ static void check_device_speed(struct usb_device *dev, bool on)
 		;
 
 	if (ss_hub || hs_hub) {
-		if (speed > pr_speed)
-			set_con_dev_max_speed(o_notify, speed);
+		if (speed > o_notify->speed)
+			o_notify->speed = speed;
 	} else
-		set_con_dev_max_speed(o_notify, USB_SPEED_UNKNOWN);
+		o_notify->speed = USB_SPEED_UNKNOWN;
 
 	pr_info("%s : dev->speed %s %s\n", __func__,
 		usb_speed_string(dev->speed), on ? "on" : "off");
 
 	pr_info("%s : o_notify->speed %s\n", __func__,
-		usb_speed_string(get_con_dev_max_speed(o_notify)));
+		usb_speed_string(o_notify->speed));
 }
 
 #if defined(CONFIG_USB_HW_PARAM)

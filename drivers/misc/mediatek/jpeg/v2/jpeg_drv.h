@@ -12,8 +12,6 @@
  */
 
 #include <linux/ioctl.h>
-#include <linux/notifier.h>
-#include "jpeg_ion.h"
 
 #ifdef CONFIG_COMPAT
 /* 32-64 bit conversion */
@@ -110,6 +108,7 @@
 #define ENABLE_MMQOS 0
 #endif
 
+
 /* #ifdef CONFIG_OF */
 struct JpegDeviceStruct {
 
@@ -121,8 +120,6 @@ struct JpegDeviceStruct {
 	uint32_t decIrqId;
 	uint32_t hybriddecIrqId[HW_CORE_NUMBER];
 	struct device *larbjpeg;
-	struct notifier_block pm_notifier;
-	bool is_suspending;
 };
 
 const long jpeg_dev_get_encoder_base_VA(void);
@@ -442,17 +439,19 @@ struct JPEG_DEC_DRV_OUT {
 	unsigned int *result;
 
 };
-
-struct JPEG_DEC_DRV_HYBRID_TASK {
+struct JPEG_DEC_DRV_HYBRID_IN {
 	long timeout;
-	int *hwid;
-	int *index_buf_fd;
-	unsigned int data[21];
+	unsigned int hwpa;
 };
 
-struct JPEG_DEC_DRV_HYBRID_P_N_S {
-	int hwid;
-	int *progress_n_status;
+struct JPEG_DEC_DRV_HYBRID_OUT {
+	long timeout;
+	unsigned int *hwpa;
+};
+
+struct JPEG_DEC_DRV_HWINFO {
+	bool locked;
+	unsigned int hwpa;
 };
 
 struct JPEG_DEC_CONFIG_ROW {
@@ -653,16 +652,14 @@ struct compat_JPEG_ENC_DRV_OUT {
 
 };
 
-struct compat_JPEG_DEC_DRV_HYBRID_TASK {
+struct compat_JPEG_DEC_DRV_HYBRID_IN {
 	compat_long_t timeout;
-	compat_uptr_t hwid;
-	compat_uptr_t index_buf_fd;
-	unsigned int  data[21];
+	unsigned int hwpa;
 };
 
-struct compat_JPEG_DEC_DRV_HYBRID_P_N_S {
-	int  hwid;
-	compat_uptr_t progress_n_status;
+struct compat_JPEG_DEC_DRV_HYBRID_OUT {
+	compat_long_t timeout;
+	compat_uptr_t hwpa;
 };
 
 #endif
@@ -699,13 +696,12 @@ struct compat_JPEG_DEC_DRV_HYBRID_P_N_S {
 	_IOW(JPEG_IOCTL_MAGIC, 17, struct JPEG_DEC_CONFIG_CMDQ)
 #define JPEG_DEC_IOCTL_DUMP_REG \
 	_IO(JPEG_IOCTL_MAGIC, 30)
-#define JPEG_DEC_IOCTL_HYBRID_START \
-	_IOWR(JPEG_IOCTL_MAGIC, 18, struct JPEG_DEC_DRV_HYBRID_TASK)
+#define JPEG_DEC_IOCTL_LOCK \
+	_IOWR(JPEG_IOCTL_MAGIC, 18, struct JPEG_DEC_DRV_HYBRID_OUT)
 #define JPEG_DEC_IOCTL_HYBRID_WAIT \
-	_IOWR(JPEG_IOCTL_MAGIC, 19, struct JPEG_DEC_DRV_HYBRID_P_N_S)
-#define JPEG_DEC_IOCTL_HYBRID_GET_PROGRESS_STATUS \
-	_IOWR(JPEG_IOCTL_MAGIC, 20, struct JPEG_DEC_DRV_HYBRID_P_N_S)
-
+	_IOWR(JPEG_IOCTL_MAGIC, 19, struct JPEG_DEC_DRV_HYBRID_IN)
+#define JPEG_DEC_IOCTL_UNLOCK \
+	_IOWR(JPEG_IOCTL_MAGIC, 20, struct JPEG_DEC_DRV_HYBRID_IN)
 
 /* /////////////////// JPEG ENC IOCTL ///////////////////////////////////// */
 
@@ -735,12 +731,12 @@ struct compat_JPEG_DEC_DRV_HYBRID_P_N_S {
 	_IOWR(JPEG_IOCTL_MAGIC,  8, struct compat_JpegDrvDecResult)
 #define COMPAT_JPEG_ENC_IOCTL_WAIT \
 	_IOWR(JPEG_IOCTL_MAGIC, 13, struct compat_JPEG_ENC_DRV_OUT)
-#define COMPAT_JPEG_DEC_IOCTL_HYBRID_START \
-	_IOWR(JPEG_IOCTL_MAGIC, 18, struct compat_JPEG_DEC_DRV_HYBRID_TASK)
+#define COMPAT_JPEG_DEC_IOCTL_LOCK \
+	_IOWR(JPEG_IOCTL_MAGIC, 18, struct compat_JPEG_DEC_DRV_HYBRID_OUT)
 #define COMPAT_JPEG_DEC_IOCTL_HYBRID_WAIT \
-	_IOWR(JPEG_IOCTL_MAGIC, 19, struct compat_JPEG_DEC_DRV_HYBRID_P_N_S)
-#define COMPAT_JPEG_DEC_IOCTL_HYBRID_GET_PROGRESS_STATUS \
-	_IOWR(JPEG_IOCTL_MAGIC, 20, struct compat_JPEG_DEC_DRV_HYBRID_P_N_S)
+	_IOWR(JPEG_IOCTL_MAGIC, 19, struct compat_JPEG_DEC_DRV_HYBRID_IN)
+#define COMPAT_JPEG_DEC_IOCTL_UNLOCK \
+	_IOWR(JPEG_IOCTL_MAGIC, 20, struct compat_JPEG_DEC_DRV_HYBRID_IN)
 #endif
 
 #endif

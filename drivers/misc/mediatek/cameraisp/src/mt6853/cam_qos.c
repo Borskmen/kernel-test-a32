@@ -160,7 +160,7 @@ void mtk_pmqos_add(enum ISP_IRQ_TYPE_ENUM module, u32 portID)
 		case _camsv_ufeo_:
 			mm_qos_add_request(gSVBW_LIST(module),
 						gSV_BW_REQ(module, portID),
-						M4U_PORT_L13_CAM_CAMSV1);
+						M4U_PORT_L13_CAM_RESERVE1);
 			break;
 		default:
 			LOG_NOTICE("unsupported port:%d\n", portID);
@@ -172,12 +172,12 @@ void mtk_pmqos_add(enum ISP_IRQ_TYPE_ENUM module, u32 portID)
 		case _camsv_imgo_:
 			mm_qos_add_request(gSVBW_LIST(module),
 						gSV_BW_REQ(module, portID),
-						M4U_PORT_L13_CAM_CAMSV2);
+						M4U_PORT_L13_CAM_RESERVE2);
 			break;
 		case _camsv_ufeo_:
 			mm_qos_add_request(gSVBW_LIST(module),
 						gSV_BW_REQ(module, portID),
-						M4U_PORT_L13_CAM_CAMSV3);
+						M4U_PORT_L13_CAM_RESERVE3);
 			break;
 		default:
 			LOG_NOTICE("unsupported port:%d\n", portID);
@@ -934,11 +934,7 @@ int ISP_SetPMQOS(
 			for (i = 0; i < step; i++)
 				pvalue[i] = freq[i];
 
-			if (step > 0)
-				target_clk = pvalue[step - 1];
-			else
-				LOG_NOTICE("No supported clock step(%d). mmdvfs not ready?\n",
-					step);
+			target_clk = pvalue[step - 1];
 
 			for (i = 0 ; i < step; i++)
 				LOG_DBG("2:DFS Clk_%d:%d", i, pvalue[i]);

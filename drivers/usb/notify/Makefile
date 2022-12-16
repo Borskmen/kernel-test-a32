@@ -6,3 +6,4 @@ usb_notify_layer-$(CONFIG_USB_HOST_NOTIFY)			+= host_notify_class.o
 usb_notify_layer-$(CONFIG_USB_EXTERNAL_NOTIFY)		+= external_notify.o
 usb_notify_layer-$(CONFIG_USB_NOTIFY_PROC_LOG)		+= usblog_proc_notify.o
 obj-$(CONFIG_USB_NOTIFIER)			+= usb_notifier.o
+obj-$(CONFIG_USB_DONGLE)			+= dongle_notifier.o

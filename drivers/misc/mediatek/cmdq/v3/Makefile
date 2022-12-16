@@ -13,10 +13,6 @@
 
 # common driver code for CMDQ
 
-ifeq (y, $(filter y, $(CONFIG_MACH_MT6833)))
-	MTK_PLATFORM := mt6833
-endif
-
 ccflags-$(CONFIG_MACH_MT6768) += -DCMDQ_MDP_ENABLE_SPR
 
 ifeq ($(CONFIG_MACH_MT6785),y)
@@ -35,8 +31,7 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/ \
              -I$(srctree)/drivers/misc/mediatek/mdp/ \
              -I$(srctree)/drivers/iommu/ \
              -I$(srctree)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM) \
-             -I$(srctree)/drivers/misc/mediatek/mach/$(MTK_PLATFORM)/include \
-             -I$(srctree)/drivers/misc/mediatek/cmdq/bridge
+             -I$(srctree)/drivers/misc/mediatek/mach/$(MTK_PLATFORM)/include
 
 ifneq ($(filter mt8168,$(shell echo $(MTK_PLATFORM)|tr A-Z a-z)),)
 ccflags-y += -DCMDQ_TABLET_ENABLE
@@ -63,7 +58,7 @@ ifeq ($(or $(strip $(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)), $(strip $(CONFIG_MTK_C
 ifeq ($(CONFIG_TRUSTONIC_TEE_SUPPORT),y)
 include $(srctree)/drivers/misc/mediatek/gud/Makefile.include
 else ifeq ($(CONFIG_TEEGRIS_TEE_SUPPORT),y)
-include $(srctree)/drivers/misc/tzdev/Makefile.include
+	ccflags-y += -I$(srctree)/drivers/misc/tzdev/include/tzdev
 endif
 
 ifeq ($(CONFIG_MICROTRUST_TEE_SUPPORT),y)

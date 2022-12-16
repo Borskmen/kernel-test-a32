@@ -19,13 +19,7 @@
 #include "five_state.h"
 #include "five_hooks.h"
 #include "five_cache.h"
-#ifndef FIVE_KUNIT_ENABLED
 #include "five_dsms.h"
-#else
-void five_dsms_reset_integrity(const char *task_name, int result,
-				const char *file_name);
-#endif
-#include "five_testing.h"
 
 enum task_integrity_state_cause {
 	STATE_CAUSE_UNKNOWN,
@@ -46,8 +40,7 @@ struct task_verification_result {
 	enum task_integrity_state_cause cause;
 };
 
-__visible_for_testing
-const char *task_integrity_state_str(
+static const char *task_integrity_state_str(
 		enum task_integrity_state_cause cause)
 {
 	const char *str = "unknown";
@@ -88,8 +81,7 @@ const char *task_integrity_state_str(
 	return str;
 }
 
-__visible_for_testing
-enum task_integrity_reset_cause state_to_reason_cause(
+static enum task_integrity_reset_cause state_to_reason_cause(
 		enum task_integrity_state_cause cause)
 {
 	enum task_integrity_reset_cause reset_cause;
@@ -116,8 +108,7 @@ enum task_integrity_reset_cause state_to_reason_cause(
 	return reset_cause;
 }
 
-__visible_for_testing
-int is_system_label(struct integrity_label *label)
+static int is_system_label(struct integrity_label *label)
 {
 	if (label && label->len == 0)
 		return 1; /* system label */
@@ -125,15 +116,13 @@ int is_system_label(struct integrity_label *label)
 	return 0;
 }
 
-__visible_for_testing
-inline int integrity_label_cmp(struct integrity_label *l1,
+static inline int integrity_label_cmp(struct integrity_label *l1,
 					struct integrity_label *l2)
 {
 	return 0;
 }
 
-__visible_for_testing
-int verify_or_update_label(struct task_integrity *intg,
+static int verify_or_update_label(struct task_integrity *intg,
 		struct integrity_iint_cache *iint)
 {
 	struct integrity_label *l;
@@ -175,8 +164,7 @@ out:
 	return rc;
 }
 
-__visible_for_testing
-bool set_first_state(struct integrity_iint_cache *iint,
+static bool set_first_state(struct integrity_iint_cache *iint,
 				struct task_integrity *integrity,
 				struct task_verification_result *result)
 {
@@ -235,8 +223,7 @@ bool set_first_state(struct integrity_iint_cache *iint,
 	return true;
 }
 
-__visible_for_testing
-bool set_next_state(struct integrity_iint_cache *iint,
+static bool set_next_state(struct integrity_iint_cache *iint,
 			   struct task_integrity *integrity,
 			   struct task_verification_result *result)
 {

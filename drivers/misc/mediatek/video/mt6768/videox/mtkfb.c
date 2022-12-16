@@ -229,6 +229,7 @@ static int mtkfb_release(struct fb_info *info, int user)
 	NOT_REFERENCED(info);
 	NOT_REFERENCED(user);
 	DISPFUNC();
+
 	MSG_FUNC_ENTER();
 	MSG_FUNC_LEAVE();
 	return 0;
@@ -267,7 +268,7 @@ static int mtkfb1_blank(int blank_mode, struct fb_info *info)
 static int mtkfb_blank(int blank_mode, struct fb_info *info)
 {
 	enum mtkfb_power_mode prev_pm = primary_display_get_power_mode();
-#if defined(CONFIG_SMCDSD_PANEL)
+#if defined(CONFIG_SMCDSD_PANEL) 
 	pr_info("%s + blank_mode: %d, %s\n",
 			__func__, blank_mode, blank_mode == FB_BLANK_UNBLANK ? "UNBLANK" : "POWERDOWN");
 #endif
@@ -310,6 +311,7 @@ static int mtkfb_blank(int blank_mode, struct fb_info *info)
 #if defined(CONFIG_SMCDSD_PANEL)
 	pr_info("%s - blank_mode: %d\n", __func__, blank_mode);
 #endif
+
 	return 0;
 }
 
@@ -974,7 +976,7 @@ unsigned int mtkfb_fm_auto_test(void)
 	}
 
 	if (idle_state_backup) {
-		primary_display_idlemgr_kick(__func__, 1);
+		primary_display_idlemgr_kick(__func__, 0);
 		disp_helper_set_option(DISP_OPT_IDLEMGR_ENTER_ULPS, 0);
 	}
 	fbVirAddr = (unsigned long)fbdev->fb_va_base;
@@ -1008,7 +1010,7 @@ unsigned int mtkfb_fm_auto_test(void)
 
 	mtkfb_pan_display_impl(&mtkfb_fbi->var, mtkfb_fbi);
 	msleep(100);
-	primary_display_idlemgr_kick(__func__, 1);
+	primary_display_idlemgr_kick(__func__, 0);
 	result = primary_display_lcm_ATA();
 
 	if (idle_state_backup)
@@ -1029,7 +1031,7 @@ int mtkfb_aod_mode_switch(enum mtkfb_aod_power_mode aod_pm)
 	enum mtkfb_power_mode prev_pm = primary_display_get_power_mode();
 
 	DISPCHECK("AOD: ioctl: %s\n",
-		(aod_pm != 0) ? "AOD_DOZE_SUSPEND" : "AOD_DOZE");
+		aod_pm ? "AOD_DOZE_SUSPEND" : "AOD_DOZE");
 	if (!primary_is_aod_supported()) {
 		DISPCHECK("AOD: feature not support\n");
 		return ret;
@@ -1062,8 +1064,7 @@ int mtkfb_aod_mode_switch(enum mtkfb_aod_power_mode aod_pm)
 	}
 	if (ret < 0)
 		DISPERR("AOD: set %s failed\n",
-			(aod_pm != MTKFB_AOD_DOZE) ? "AOD_SUSPEND"
-			: "AOD_RESUME");
+			aod_pm ? "AOD_SUSPEND" : "AOD_RESUME");
 	return ret;
 }
 
@@ -2578,6 +2579,7 @@ static int mtkfb_probe(struct platform_device *pdev)
 	primary_display_set_frame_buffer_address(
 		(unsigned long)(fbdev->fb_va_base), fb_pa, fb_base);
 	primary_display_init(mtkfb_find_lcm_driver(), lcd_fps, is_lcm_inited);
+
 	init_state++;		/* 1 */
 	MTK_FB_XRES = DISP_GetScreenWidth();
 	MTK_FB_YRES = DISP_GetScreenHeight();
@@ -2750,11 +2752,11 @@ static void mtkfb_shutdown(struct platform_device *pdev)
 	MTKFB_LOG("[FB Driver] leave mtkfb_shutdown\n");
 	pr_info("%s: --\n", __func__);
 }
-
 #else
 static void mtkfb_shutdown(struct platform_device *pdev)
 {
 	MTKFB_LOG("[FB Driver] %s()\n", __func__);
+
 	if (primary_display_is_sleepd()) {
 		MTKFB_LOG("mtkfb has been power off\n");
 		return;
@@ -2835,6 +2837,7 @@ static void mtkfb_late_resume(void)
 	DISPMSG("[FB Driver] enter late_resume\n");
 
 	ret = primary_display_resume();
+
 	if (ret) {
 		DISPERR("primary display resume failed\n");
 		return;

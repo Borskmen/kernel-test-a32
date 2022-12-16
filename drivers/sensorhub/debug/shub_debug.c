@@ -1,18 +1,3 @@
-/*
- *  Copyright (C) 2020, Samsung Electronics Co. Ltd. All Rights Reserved.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- */
-
 #include <linux/slab.h>
 #include <linux/timer.h>
 #include <linux/kernel.h>
@@ -246,7 +231,7 @@ void print_dataframe(char *dataframe, int frame_len)
 	}
 }
 
-int print_system_info(char *dataframe, int *index, int frame_len)
+int print_system_info(char *dataframe, int *index)
 {
 	struct sensor_debug_info {
 		uint8_t uid;
@@ -280,24 +265,10 @@ int print_system_info(char *dataframe, int *index, int frame_len)
 	struct sensor_debug_info *info = 0;
 	struct system_debug_info *s_info = 0;
 	int i;
-	int count, system_info_len;
+	int count = *dataframe;
 
-	if (*index + 1 > frame_len) {
-		shub_errf("parsing error");
-		return -EINVAL;
-	}
-	count = *dataframe;
 	++dataframe;
-	*index += 1;
-
-	system_info_len = (sizeof(struct sensor_debug_info) * count + sizeof(struct system_debug_info));
-
-	if (*index + system_info_len > frame_len) {
-		shub_errf("parsing error %d", count);
-		return -EINVAL;
-	}
-
-	*index += system_info_len;
+	*index += (1 + sizeof(struct sensor_debug_info) * count + sizeof(struct system_debug_info));
 
 	shub_info("==system info ===");
 	for (i = 0; i < count; ++i) {

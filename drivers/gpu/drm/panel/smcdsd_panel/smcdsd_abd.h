@@ -11,7 +11,7 @@
 #define __SMCDSD_ABD_H__
 
 #include <linux/interrupt.h>
-#include <linux/miscdevice.h>
+#include <linux/fb.h>
 
 #define ABD_LOG_MAX	50
 
@@ -39,6 +39,7 @@ struct pin_log {
 
 	/* pin */
 	unsigned int level;
+	unsigned int state;
 	unsigned int onoff;
 };
 
@@ -57,29 +58,19 @@ struct abd_pin_info {
 	int gpio;
 	int level;
 	int active_level;
-	unsigned int active_depth;
 	unsigned int enable;
-	unsigned int index;
-	unsigned int bug_flag;
 
 	struct abd_pin p_first;
 	struct abd_pin p_lcdon;
 	struct abd_pin p_event;
 
-	struct list_head event_chain;
-	struct list_head enter_chain;
-	struct list_head leave_chain;
+	struct list_head handler_list;
 };
 
-struct abd_sub_info {
+struct adb_pin_handler {
 	struct list_head node;
-	void *chain_data;
-	union {
-		irq_handler_t handler;
-		notifier_fn_t notifier;
-		int (*listener)(int id, void *data);
-		int (*show)(struct seq_file *m, void *v);
-	};
+	irq_handler_t handler;
+	void *dev_id;
 };
 
 struct fto_log {
@@ -161,8 +152,6 @@ struct abd_protect {
 
 	struct abd_str s_event;
 
-	struct list_head printer_list;
-
 	struct notifier_block pin_early_notifier;
 	struct notifier_block pin_after_notifier;
 
@@ -170,22 +159,20 @@ struct abd_protect {
 	struct notifier_block reboot_notifier;
 	spinlock_t slock;
 
-	struct workqueue_struct *blank_workqueue;
-	struct work_struct blank_work;
-	unsigned int blank_flag;
+	struct workqueue_struct *con_workqueue;
+	struct work_struct con_work;
+	unsigned int con_irq;
+	unsigned int con_blank;
 
 	struct notifier_block con_fb_notifier;
 	struct fb_ops fbops;
 	void *lcd_driver;
 
-	unsigned int islcmconnected;
-	unsigned int init_done;
-	unsigned int boot_done;
-
-	struct miscdevice misc_entry;
-	struct mutex misc_lock;
+	struct device *fbdev;
+	unsigned int wake_lock_enable;
 
 	struct dentry *debugfs_root;
+	unsigned int init_done;
 };
 
 extern unsigned int lcdtype;
@@ -193,13 +180,13 @@ extern unsigned int lcdtype;
 extern void smcdsd_abd_save_str(struct abd_protect *abd, const char *print);
 extern void smcdsd_abd_save_bit(struct abd_protect *abd, unsigned int size, unsigned int value, char **print);
 extern void smcdsd_abd_enable(struct abd_protect *abd, unsigned int enable);
-extern int smcdsd_abd_pin_register_handler(struct abd_protect *abd, int id, irq_handler_t func, void *dev_id);
-extern int smcdsd_abd_pin_register_refresh_handler(struct abd_protect *abd, int id);
-extern int smcdsd_abd_register_printer(struct abd_protect *abd, int (*show)(struct seq_file *, void *), void *data);
+extern int smcdsd_abd_pin_enable(struct abd_protect *abd, unsigned int gpio, bool on);
+extern int smcdsd_abd_pin_register_handler(struct abd_protect *abd, int irq, irq_handler_t handler, void *dev_id);
+extern int smcdsd_abd_pin_unregister_handler(struct abd_protect *abd, int irq, irq_handler_t handler, void *dev_id);
 extern int smcdsd_abd_con_register(struct abd_protect *abd);
 extern struct device *find_lcd_class_device(void);
 extern struct platform_device *of_find_abd_dt_parent_platform_device(void);
 extern struct platform_device *of_find_abd_container_platform_device(void);
-extern void smcdsd_abd_blank(struct abd_protect *abd);
+extern void find_abd_save_str(const char *print);
 #endif
 

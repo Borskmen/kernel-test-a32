@@ -347,9 +347,6 @@ int sec_bat_parse_dt(struct device *dev,
 	pdata->pd_comm_cap = of_property_read_bool(np,
 						     "battery,pd_comm_cap");
 
-	pdata->dynamic_cv_factor = of_property_read_bool(np,
-						     "battery,dynamic_cv_factor");
-
 	ret = of_property_read_string(np,
 		"battery,chip_vendor", (char const **)&pdata->chip_vendor);
 	if (ret)
@@ -1670,7 +1667,7 @@ int sec_bat_parse_dt(struct device *dev,
 			&pdata->apdo_max_volt);
 	if (ret) {
 		pr_err("%s: apdo_max_volt is Empty\n", __func__);
-		pdata->apdo_max_volt = 11000; /* 11v */
+		pdata->apdo_max_volt = 10000; /* 10v */
 	}
 
 #if defined(CONFIG_DUAL_BATTERY)

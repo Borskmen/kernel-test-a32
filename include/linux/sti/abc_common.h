@@ -41,19 +41,10 @@ extern struct class *sec_class;
 #include <linux/workqueue.h>
 #include <linux/rtc.h>
 #include <linux/version.h>
-#if IS_ENABLED(CONFIG_SEC_KUNIT)
-#include <kunit/test.h>
-#include <kunit/mock.h>
-#else
-#define __visible_for_testing static
-#endif
 #if (KERNEL_VERSION(4, 11, 0) <= LINUX_VERSION_CODE)
 #include <linux/sched/clock.h>
 #else
 #include <linux/sched.h>
-#endif
-#if IS_ENABLED(CONFIG_SEC_ABC_MOTTO)
-#include <linux/sti/abc_motto.h>
 #endif
 #define ABC_UEVENT_MAX		20
 #define ABC_BUFFER_MAX		256
@@ -89,7 +80,13 @@ struct abc_qdata {
 	struct abc_buffer buffer;
 };
 
-
+#if IS_ENABLED(CONFIG_SEC_ABC_MOTTO)
+struct abc_motto_data {
+	const char *desc;
+	u32 info_bootcheck_base;
+	u32 info_device_base;
+};
+#endif
 
 struct abc_platform_data {
 	struct abc_qdata *gpu_items;
@@ -125,5 +122,17 @@ struct abc_info {
 extern void sec_abc_send_event(char *str);
 extern int sec_abc_get_enabled(void);
 extern int sec_abc_wait_enabled(void);
+
+#if IS_ENABLED(CONFIG_SEC_ABC_MOTTO)
+extern void motto_send_bootcheck_info(int boot_time);
+
+void init_motto_magic(void);
+void motto_send_device_info(char *event_type);
+void get_motto_info(struct device *dev,
+			   u32 *ret_info_boot, u32 *ret_info_device);
+int parse_motto_data(struct device *dev,
+			   struct abc_platform_data *pdata,
+			   struct device_node *np);
+#endif
 
 #endif

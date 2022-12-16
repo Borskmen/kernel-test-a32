@@ -1,18 +1,3 @@
-/*
- *  Copyright (C) 2020, Samsung Electronics Co. Ltd. All Rights Reserved.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- */
-
 #include "../sensormanager/shub_sensor.h"
 #include "../sensormanager/shub_sensor_manager.h"
 #include "../utility/shub_utility.h"
@@ -46,15 +31,12 @@ err_no_mem:
 	return -ENOMEM;
 }
 
-int get_hub_debugger_value(char *dataframe, int *index, struct sensor_event *event, int frame_len)
+void get_hub_debugger_value(char *dataframe, int *index, struct sensor_event *event)
 {
 	u16 length = 0;
 	u8 *buf;
 
 	memcpy(&length, dataframe + *index, 2);
-	if (*index + length > frame_len)
-		return -EINVAL;
-
 	*index += 2;
 
 	buf = kzalloc(length, GFP_KERNEL);
@@ -64,8 +46,6 @@ int get_hub_debugger_value(char *dataframe, int *index, struct sensor_event *eve
 	*index += length;
 
 	kfree(buf);
-
-	return 0;
 }
 
 int init_hub_debugger(bool en)

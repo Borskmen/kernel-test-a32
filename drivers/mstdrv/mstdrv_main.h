@@ -20,12 +20,8 @@
 #if defined(_ARCH_ARM_MACH_MSM_BUS_H) // build error
 #include <linux/msm-bus.h>
 #endif
-#if IS_MODULE(CONFIG_SCHED_WALT)	// QC recommend (CN 05456519)
-#include <linux/sched/walt.h>
-#else
-#include <linux/sched/core_ctl.h>
-#endif
 #include <linux/msm_pcie.h>
+#include <linux/sched/core_ctl.h>
 #include <linux/qseecom.h>
 #endif
 
@@ -45,6 +41,14 @@
 #include "../../drivers/misc/tzdev/include/tzdev/tee_client_api.h"
 #endif
 
+#if defined(CONFIG_MFC_CHARGER)
+#if IS_ENABLED(CONFIG_WIRELESS_CHARGER_MFC_S2MIW04)
+#include "../../drivers/battery/wireless/mfc_s2miw04_charger.h"
+#else
+#include "../../drivers/battery/wireless/mfc_charger.h"
+#endif
+#endif
+
 #if defined(CONFIG_MST_NONSECURE)
 #include "mstdrv_transmit_nonsecure.h"
 #endif
@@ -60,6 +64,21 @@
 DEFINE_MUTEX(mst_mutex);
 DEFINE_MUTEX(transmit_mutex);
 #endif
+
+#if defined(CONFIG_MST_V2)
+#define MFC_MST_LDO_CONFIG_1				0x7400
+#define MFC_MST_LDO_CONFIG_2				0x7409
+#define MFC_MST_LDO_CONFIG_3				0x7418
+#define MFC_MST_LDO_CONFIG_4				0x3014
+#define MFC_MST_LDO_CONFIG_5				0x3405
+#define MFC_MST_LDO_CONFIG_6				0x3010
+#define MFC_MST_LDO_TURN_ON				0x301c
+#define MFC_MST_LDO_CONFIG_8				0x343c
+#define MFC_MST_OVER_TEMP_INT				0x0024
+#endif
+#define MFC_CHIP_ID_L_REG				0x00
+#define MFC_CHIP_ID_P9320				0x20
+#define MFC_CHIP_ID_S2MIW04				0x04
 
 /* for logging */
 #include <linux/printk.h>
@@ -81,6 +100,7 @@ struct workqueue_struct *cluster_freq_ctrl_wq;
 struct delayed_work dwork;
 
 static uint32_t mode_set_wait = 40;
+static uint32_t idt_i2c_command = -1;
 
 typedef enum {
 	MFC_CHIP_ID_IDT = 1,

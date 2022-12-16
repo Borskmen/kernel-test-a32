@@ -12,3 +12,4 @@
 #
 export KORO_ROOT_DIR ?= $(srctree)/drivers/misc/mediatek/base/power/koro
 obj-y += $(subst ",,$(CONFIG_MTK_PLATFORM))/
+

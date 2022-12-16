@@ -526,7 +526,7 @@ static struct queue_sysfs_entry queue_requests_entry = {
 };
 
 static struct queue_sysfs_entry queue_ra_entry = {
-	.attr = {.name = "read_ahead_kb", .mode = 0644 },
+	.attr = {.name = "read_ahead_kb", .mode = S_IRUGO | S_IWUSR },
 	.show = queue_ra_show,
 	.store = queue_ra_store,
 };
@@ -718,7 +718,7 @@ static ssize_t queue_io_vol_show(struct request_queue *q, char *page)
 }
 
 static struct queue_sysfs_entry queue_io_volume_entry = {
-	.attr = {.name = "io_volume", .mode = 0444},
+	.attr = {.name = "io_volume", .mode = S_IRUGO },
 	.show = queue_io_vol_show,
 };
 #endif
@@ -746,12 +746,11 @@ static ssize_t queue_tw_state_show(struct request_queue *q, char *page)
 }
 
 static struct queue_sysfs_entry queue_tw_state_entry = {
-	.attr = {.name = "tw_state", .mode = 0444},
+	.attr = {.name = "tw_state", .mode = S_IRUGO },
 	.show = queue_tw_state_show,
 };
 
-static ssize_t queue_tw_up_threshold_bytes_show(struct request_queue *q,
-	char *page)
+static ssize_t queue_tw_up_threshold_bytes_show(struct request_queue *q, char *page)
 {
 	struct blk_turbo_write tw;
 	ssize_t ret;
@@ -770,8 +769,7 @@ static ssize_t queue_tw_up_threshold_bytes_show(struct request_queue *q,
 	return ret;
 }
 
-static ssize_t queue_tw_up_threshold_bytes_store(struct request_queue *q,
-	const char *page, size_t count)
+static ssize_t queue_tw_up_threshold_bytes_store(struct request_queue *q, const char *page, size_t count)
 {
 	unsigned long val;
 	ssize_t ret;
@@ -794,13 +792,12 @@ static ssize_t queue_tw_up_threshold_bytes_store(struct request_queue *q,
 }
 
 static struct queue_sysfs_entry queue_tw_up_threshold_bytes_entry = {
-	.attr = {.name = "tw_up_threshold_bytes", .mode = 0644},
+	.attr = {.name = "tw_up_threshold_bytes", .mode = S_IRUGO | S_IWUSR },
 	.show = queue_tw_up_threshold_bytes_show,
 	.store = queue_tw_up_threshold_bytes_store,
 };
 
-static ssize_t queue_tw_up_threshold_rqs_show(struct request_queue *q,
-	char *page)
+static ssize_t queue_tw_up_threshold_rqs_show(struct request_queue *q, char *page)
 {
 	struct blk_turbo_write tw;
 	ssize_t ret;
@@ -819,8 +816,7 @@ static ssize_t queue_tw_up_threshold_rqs_show(struct request_queue *q,
 	return ret;
 }
 
-static ssize_t queue_tw_up_threshold_rqs_store(struct request_queue *q,
-	const char *page, size_t count)
+static ssize_t queue_tw_up_threshold_rqs_store(struct request_queue *q, const char *page, size_t count)
 {
 	unsigned long val;
 	ssize_t ret;
@@ -843,13 +839,12 @@ static ssize_t queue_tw_up_threshold_rqs_store(struct request_queue *q,
 }
 
 static struct queue_sysfs_entry queue_tw_up_threshold_rqs_entry = {
-	.attr = {.name = "tw_up_threshold_rqs", .mode = 0644},
+	.attr = {.name = "tw_up_threshold_rqs", .mode = S_IRUGO | S_IWUSR },
 	.show = queue_tw_up_threshold_rqs_show,
 	.store = queue_tw_up_threshold_rqs_store,
 };
 
-static ssize_t queue_tw_down_threshold_bytes_show(struct request_queue *q,
-	char *page)
+static ssize_t queue_tw_down_threshold_bytes_show(struct request_queue *q, char *page)
 {
 	struct blk_turbo_write tw;
 	ssize_t ret;
@@ -868,8 +863,7 @@ static ssize_t queue_tw_down_threshold_bytes_show(struct request_queue *q,
 	return ret;
 }
 
-static ssize_t queue_tw_down_threshold_bytes_store(struct request_queue *q,
-	const char *page, size_t count)
+static ssize_t queue_tw_down_threshold_bytes_store(struct request_queue *q, const char *page, size_t count)
 {
 	unsigned long val;
 	ssize_t ret;
@@ -892,13 +886,12 @@ static ssize_t queue_tw_down_threshold_bytes_store(struct request_queue *q,
 }
 
 static struct queue_sysfs_entry queue_tw_down_threshold_bytes_entry = {
-	.attr = {.name = "tw_down_threshold_bytes", .mode = 0644},
+	.attr = {.name = "tw_down_threshold_bytes", .mode = S_IRUGO | S_IWUSR },
 	.show = queue_tw_down_threshold_bytes_show,
 	.store = queue_tw_down_threshold_bytes_store,
 };
 
-static ssize_t queue_tw_down_threshold_rqs_show(struct request_queue *q,
-	char *page)
+static ssize_t queue_tw_down_threshold_rqs_show(struct request_queue *q, char *page)
 {
 	struct blk_turbo_write tw;
 	ssize_t ret;
@@ -917,8 +910,7 @@ static ssize_t queue_tw_down_threshold_rqs_show(struct request_queue *q,
 	return ret;
 }
 
-static ssize_t queue_tw_down_threshold_rqs_store(struct request_queue *q,
-	const char *page, size_t count)
+static ssize_t queue_tw_down_threshold_rqs_store(struct request_queue *q, const char *page, size_t count)
 {
 	unsigned long val;
 	ssize_t ret;
@@ -941,13 +933,12 @@ static ssize_t queue_tw_down_threshold_rqs_store(struct request_queue *q,
 }
 
 static struct queue_sysfs_entry queue_tw_down_threshold_rqs_entry = {
-	.attr = {.name = "tw_down_threshold_rqs", .mode = 0644},
+	.attr = {.name = "tw_down_threshold_rqs", .mode = S_IRUGO | S_IWUSR },
 	.show = queue_tw_down_threshold_rqs_show,
 	.store = queue_tw_down_threshold_rqs_store,
 };
 
-static ssize_t queue_tw_on_delay_ms_show(struct request_queue *q,
-	char *page)
+static ssize_t queue_tw_on_delay_ms_show(struct request_queue *q, char *page)
 {
 	struct blk_turbo_write tw;
 	ssize_t ret;
@@ -966,8 +957,7 @@ static ssize_t queue_tw_on_delay_ms_show(struct request_queue *q,
 	return ret;
 }
 
-static ssize_t queue_tw_on_delay_ms_store(struct request_queue *q,
-	const char *page, size_t count)
+static ssize_t queue_tw_on_delay_ms_store(struct request_queue *q, const char *page, size_t count)
 {
 	unsigned long val;
 	ssize_t ret;
@@ -989,13 +979,12 @@ static ssize_t queue_tw_on_delay_ms_store(struct request_queue *q,
 }
 
 static struct queue_sysfs_entry queue_tw_on_delay_ms_entry = {
-	.attr = {.name = "tw_on_delay_ms", .mode = 0644},
+	.attr = {.name = "tw_on_delay_ms", .mode = S_IRUGO | S_IWUSR },
 	.show = queue_tw_on_delay_ms_show,
 	.store = queue_tw_on_delay_ms_store,
 };
 
-static ssize_t queue_tw_on_interval_ms_show(struct request_queue *q,
-	char *page)
+static ssize_t queue_tw_on_interval_ms_show(struct request_queue *q, char *page)
 {
 	struct blk_turbo_write tw;
 	ssize_t ret;
@@ -1014,8 +1003,7 @@ static ssize_t queue_tw_on_interval_ms_show(struct request_queue *q,
 	return ret;
 }
 
-static ssize_t queue_tw_on_interval_ms_store(struct request_queue *q,
-	const char *page, size_t count)
+static ssize_t queue_tw_on_interval_ms_store(struct request_queue *q, const char *page, size_t count)
 {
 	unsigned long val;
 	ssize_t ret;
@@ -1037,13 +1025,12 @@ static ssize_t queue_tw_on_interval_ms_store(struct request_queue *q,
 }
 
 static struct queue_sysfs_entry queue_tw_on_interval_ms_entry = {
-	.attr = {.name = "tw_on_interval_ms", .mode = 0644},
+	.attr = {.name = "tw_on_interval_ms", .mode = S_IRUGO | S_IWUSR },
 	.show = queue_tw_on_interval_ms_show,
 	.store = queue_tw_on_interval_ms_store,
 };
 
-static ssize_t queue_tw_off_delay_ms_show(struct request_queue *q,
-	char *page)
+static ssize_t queue_tw_off_delay_ms_show(struct request_queue *q, char *page)
 {
 	struct blk_turbo_write tw;
 	ssize_t ret;
@@ -1062,8 +1049,7 @@ static ssize_t queue_tw_off_delay_ms_show(struct request_queue *q,
 	return ret;
 }
 
-static ssize_t queue_tw_off_delay_ms_store(struct request_queue *q,
-	const char *page, size_t count)
+static ssize_t queue_tw_off_delay_ms_store(struct request_queue *q, const char *page, size_t count)
 {
 	unsigned long val;
 	ssize_t ret;
@@ -1085,7 +1071,7 @@ static ssize_t queue_tw_off_delay_ms_store(struct request_queue *q,
 }
 
 static struct queue_sysfs_entry queue_tw_off_delay_ms_entry = {
-	.attr = {.name = "tw_off_delay_ms", .mode = 0644},
+	.attr = {.name = "tw_off_delay_ms", .mode = S_IRUGO | S_IWUSR },
 	.show = queue_tw_off_delay_ms_show,
 	.store = queue_tw_off_delay_ms_store,
 };

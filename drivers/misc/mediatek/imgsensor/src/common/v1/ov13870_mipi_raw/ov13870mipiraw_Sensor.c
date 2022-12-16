@@ -197,7 +197,7 @@ static struct imgsensor_struct imgsensor = {
 	.autoflicker_en = KAL_FALSE,	/* auto flicker enable: KAL_FALSE for disable auto flicker,
 					 * KAL_TRUE for enable auto flicker
 					 */
-	.test_pattern = 0,	/* test pattern mode or not.
+	.test_pattern = KAL_FALSE,	/* test pattern mode or not.
 					 * KAL_FALSE for in test pattern mode,
 					 * KAL_TRUE for normal output
 					 */
@@ -896,7 +896,7 @@ static kal_uint32 open(void)
 	imgsensor.dummy_pixel = 0;
 	imgsensor.dummy_line = 0;
 	imgsensor.hdr_mode = KAL_FALSE;
-	imgsensor.test_pattern = 0;
+	imgsensor.test_pattern = KAL_FALSE;
 	imgsensor.current_fps = imgsensor_info.pre.max_framerate;
 	spin_unlock(&imgsensor_drv_lock);
 
@@ -1563,11 +1563,11 @@ static kal_uint32 get_default_framerate_by_scenario(
 	return ERROR_NONE;
 }
 
-static kal_uint32 set_test_pattern_mode(kal_uint32 modes)
+static kal_uint32 set_test_pattern_mode(kal_bool enable)
 {
-	LOG_INF("modes: %d\n", modes);
+	LOG_INF("enable: %d\n", enable);
 
-	if (modes == 2) {
+	if (enable) {
 		/* 0x5081[0]: 1 enable,  0 disable */
 		/* 0x5081[5:4]: Color bar type */
 		write_cmos_sensor_byte(0x5081, 0x01);
@@ -1584,11 +1584,7 @@ static kal_uint32 set_test_pattern_mode(kal_uint32 modes)
 			|| pdaf_sensor_type == PDAF_NO_PDAF)) {
 			write_cmos_sensor_byte(0x5001, 0x04);
 		}
-	} else if (modes == 5) {
-		write_cmos_sensor_byte(0x3019, 0xf0);
-		write_cmos_sensor_byte(0x4308, 0x01);
-	}
-	if ((modes != 2) && (imgsensor.test_pattern == 2)) {//colorbar off
+	} else {
 		/* 0x5081[0]: 1 enable,  0 disable */
 		/* 0x5081[5:4]: Color bar type */
 		write_cmos_sensor_byte(0x5081, 0x00);
@@ -1599,13 +1595,10 @@ static kal_uint32 set_test_pattern_mode(kal_uint32 modes)
 			|| pdaf_sensor_type == PDAF_NO_PDAF)) {
 			write_cmos_sensor_byte(0x5001, 0x00);
 		}
-	} else if (modes != 5 && (imgsensor.test_pattern == 5)) {
-		write_cmos_sensor_byte(0x3019, 0xd2);
-		write_cmos_sensor_byte(0x4308, 0x00);
 	}
 
 	spin_lock(&imgsensor_drv_lock);
-	imgsensor.test_pattern = modes;
+	imgsensor.test_pattern = enable;
 	spin_unlock(&imgsensor_drv_lock);
 	return ERROR_NONE;
 }
@@ -1712,7 +1705,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id, UINT8 *fe
 			(MUINT32 *) (uintptr_t) (*(feature_data + 1)));
 		break;
 	case SENSOR_FEATURE_SET_TEST_PATTERN:
-		set_test_pattern_mode((UINT32) (*feature_data));
+		set_test_pattern_mode((BOOL) (*feature_data));
 		break;
 	case SENSOR_FEATURE_GET_TEST_PATTERN_CHECKSUM_VALUE:	/* for factory mode auto testing */
 		*feature_return_para_32 = imgsensor_info.checksum_value;

@@ -174,6 +174,7 @@ void cmdq_dumpregs(struct cmdq_host *cq_host)
 	/* do not recover system if test mode is enabled */
 	BUG();
 #endif
+
 }
 
 /**
@@ -338,8 +339,8 @@ static int cmdq_enable(struct mmc_host *mmc)
 
 	/* disable write protection violation indication */
 	cmdq_writel(cq_host,
-				cmdq_readl(cq_host, CQRMEM) & ~(WP_VIOLATION | WP_ERASE_SKIP),
-				CQRMEM);
+			cmdq_readl(cq_host, CQRMEM) & ~(WP_VIOLATION | WP_ERASE_SKIP),
+			CQRMEM);
 
 	/* ensure the writes are done before enabling CQE */
 	mb();
@@ -347,9 +348,10 @@ static int cmdq_enable(struct mmc_host *mmc)
 	cq_host->enabled = true;
 	mmc_host_clr_cq_disable(mmc);
 out:
+#ifdef CONFIG_MTK_EMMC_CQ_SUPPORT
 	if (err)
 		mmc_cmdq_error_logging(mmc->card, NULL, CQ_EN_DIS_ERR);
-
+#endif
 	return err;
 }
 
@@ -746,17 +748,56 @@ static void cmdq_finish_data(struct mmc_host *mmc, unsigned int tag)
 	mrq->done(mrq);
 }
 
+#ifdef CONFIG_DEBUG_PATCH_CMDQ_EMMC
+
+#define ENABLE_DBG_MMC_CMDQ
+
+#ifdef  ENABLE_DBG_MMC_CMDQ
+struct cmdq_winfo {
+	void* pc;
+	u32 reg;
+	u32 status;	
+	struct cmdq_host *cq_host;
+	u32 msdc_clkregs[5];
+	unsigned long long time;
+};
+#define NUM_CMDQ_LOG 10
+static atomic_t _mmc_cmdq_log_idx = ATOMIC_INIT(0);
+static struct cmdq_winfo  _mmc_cmdq_log_buf[NUM_CMDQ_LOG];
+extern void msdc_dump_clock_sts_core_raw(u32* clk_regs);
+#define DBG_TRACE_CMDQW(h, s, r)	\
+do {	\
+__label__ __L1; \
+__L1:;		\
+	int i = (int)atomic_inc_return(&_mmc_cmdq_log_idx)-1; \
+	i %= NUM_CMDQ_LOG;	\
+	_mmc_cmdq_log_buf[i].time=sched_clock();    \
+	_mmc_cmdq_log_buf[i].pc = &&__L1;/*__builtin_return_address(0);*/\
+	_mmc_cmdq_log_buf[i].reg=r;	\
+	_mmc_cmdq_log_buf[i].status=s;	\
+	_mmc_cmdq_log_buf[i].cq_host=h;	\
+	msdc_dump_clock_sts_core_raw(_mmc_cmdq_log_buf[i].msdc_clkregs); \
+/*	pr_err("DBG_TRACE_CMDQW:[%d]pc=%pF, reg=%x,status=%d, host=%p, 0x%x,0x%X,0x%x,0x%x,0x%x,time=%llu\n", i, _mmc_cmdq_log_buf[i].pc, _mmc_cmdq_log_buf[i].reg, _mmc_cmdq_log_buf[i].status, _mmc_cmdq_log_buf[i].cq_host,  _mmc_cmdq_log_buf[i].msdc_clkregs[0],_mmc_cmdq_log_buf[i].msdc_clkregs[1],_mmc_cmdq_log_buf[i].msdc_clkregs[2],_mmc_cmdq_log_buf[i].msdc_clkregs[3],_mmc_cmdq_log_buf[i].msdc_clkregs[4],_mmc_cmdq_log_buf[i].time); */\
+}while(0)
+
+#else
+#define DBG_TRACE_CMDQW(h, s, r)
+#endif
+#endif
+
 irqreturn_t cmdq_irq(struct mmc_host *mmc, int err)
 {
 	u32 status = 0, task_mask = 0;
-	unsigned long comp_status = 0, cmd_idx = 0;
-	unsigned int tag = 0;
+	unsigned long tag = 0, comp_status = 0, cmd_idx = 0;
 	struct cmdq_host *cq_host = (struct cmdq_host *)mmc_cmdq_private(mmc);
 	unsigned long err_info = 0;
 	struct mmc_request *mrq = NULL;
 	int ret;
 
 	status = cmdq_readl(cq_host, CQIS);
+#ifdef CONFIG_DEBUG_PATCH_CMDQ_EMMC
+	DBG_TRACE_CMDQW(cq_host, status, CQIS);
+#endif
 	cmdq_writel(cq_host, status, CQIS);
 
 	if (!status && !err)
@@ -779,11 +820,9 @@ _err:
 		 * handling all the errors.
 		 */
 		ret = cmdq_halt_poll(mmc, true);
-		if (ret) {
+		if (ret)
 			pr_notice("%s: %s: halt failed ret = %d\n",
 					mmc_hostname(mmc), __func__, ret);
-			mmc_cmdq_error_logging(mmc->card, NULL, HALT_UNHALT_ERR);
-		}
 
 		/*
 		 * Clear the CQIS after halting incase of error. This is done
@@ -800,6 +839,9 @@ _err:
 				status,
 				cmdq_readl(cq_host, CQTCN));
 #endif
+#ifdef CONFIG_DEBUG_PATCH_CMDQ_EMMC
+		DBG_TRACE_CMDQW(cq_host, status, CQIS);
+#endif
 		cmdq_writel(cq_host, status, CQIS);
 
 		if (err_info & CQ_RMEFV) {
@@ -814,15 +856,12 @@ _err:
 				task_mask = cmdq_readl(cq_host, CQTCN);
 				if (!task_mask)
 					task_mask = cmdq_readl(cq_host, CQTDBR);
-				if (task_mask == 0)
-					tag = 0;
-				else
-					tag = uffs(task_mask) - 1;
-				pr_notice("%s: cmd%lu err tag: %u\n",
+				tag = uffs(task_mask) - 1;
+				pr_notice("%s: cmd%lu err tag: %lu\n",
 					__func__, cmd_idx, tag);
 			} else {
 				tag = GET_CMD_ERR_TAG(err_info);
-				pr_notice("%s: cmd err tag: %u\n",
+				pr_notice("%s: cmd err tag: %lu\n",
 					__func__, tag);
 			}
 			mrq = get_req_by_tag(cq_host, tag);
@@ -833,7 +872,7 @@ _err:
 				mrq->data->error = err;
 		} else if (err_info & CQ_DTEFV) {
 			tag = GET_DAT_ERR_TAG(err_info);
-			pr_notice("%s: dat err  tag: %u\n", __func__, tag);
+			pr_notice("%s: dat err  tag: %lu\n", __func__, tag);
 
 			mrq = get_req_by_tag(cq_host, tag);
 			mrq->data->error = err;
@@ -857,7 +896,7 @@ _err:
 			}
 
 			tag = uffs(task_mask) - 1;
-			pr_notice("%s: error tag selected: tag = %u\n",
+			pr_notice("%s: error tag selected: tag = %lu\n",
 					mmc_hostname(mmc), tag);
 			mrq = get_req_by_tag(cq_host, tag);
 			if (mrq->data)
@@ -1045,9 +1084,6 @@ static int cmdq_halt(struct mmc_host *mmc, bool halt)
 		if (cq_host->ops->pre_cqe_enable)
 			cq_host->ops->pre_cqe_enable(mmc, true);
 	}
-
-	if (ret)
-		mmc_cmdq_error_logging(mmc->card, NULL, HALT_UNHALT_ERR);
 
 	return ret;
 }

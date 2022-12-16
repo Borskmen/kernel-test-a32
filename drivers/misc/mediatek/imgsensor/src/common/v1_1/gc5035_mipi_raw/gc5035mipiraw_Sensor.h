@@ -67,6 +67,35 @@
 #define MAX_GAIN_INDEX   17
 
 /* OTP */
+#define GC5035_OTP_CUSTOMER
+#undef GC5035_OTP_DEBUG
+
+#if defined(GC5035_OTP_DEBUG)
+#define OTP_START_ADDR 0x0000
+#define OTP_DATA_LENGTH 1024
+#endif
+#define DPC_FLAG_OFFSET         0x0068
+#define DPC_TOTAL_NUMBER_OFFSET 0x0070
+#define DPC_ERROR_NUMBER_OFFSET 0x0078
+#define REG_INFO_FLAG_OFFSET 0x0880
+#define REG_INFO_PAGE_OFFSET 0x0888
+#define REG_INFO_ADDR_OFFSET 0x0890
+#define REG_INFO_VALUE_OFFSET 0x0898
+#define REG_INFO_SIZE 5
+#if defined(GC5035_OTP_CUSTOMER)
+#define MODULE_INFO_FLAG_OFFSET 0x1f10
+#define MODULE_INFO_OFFSET      0x1f18
+#define MODULE_INFO_SIZE 6
+#define WB_INFO_FLAG_OFFSET     0x1f78
+#define WB_INFO_OFFSET          0x1f80
+#define WB_INFO_SIZE            4
+#define WB_GOLDEN_INFO_OFFSET   0x1fc0
+#define WB_GOLDEN_INFO_SIZE     4
+
+#define RG_TYPICAL       0x0400
+#define BG_TYPICAL       0x0400
+#endif
+
 #define GC5035_OTP_CAL_MAX_SIZE     0xF0
 #define GC5035_OTP_CHECK_BANK       0x1000
 #define GC5035_OTP_BANK1_MARK       0x01
@@ -146,16 +175,15 @@ struct imgsensor_info_struct {
 	struct imgsensor_mode_struct pre;         /* preview scenario relative information */
 	struct imgsensor_mode_struct cap;         /* capture scenario relative information */
 	struct imgsensor_mode_struct cap1;        /* capture for PIP 24fps relative information */
-	//capture1 mode must use same framelength,
-	//linelength with Capture mode for shutter calculate
+	/* capture1 mode must use same framelength, linelength with Capture mode for shutter calculate */
 	struct imgsensor_mode_struct normal_video;/* normal video  scenario relative information */
-	struct imgsensor_mode_struct hs_video;/* high speed video scenario relative information */
-	struct imgsensor_mode_struct slim_video;/* slimvideo for VT scenario information */
-	struct imgsensor_mode_struct custom1;/* custom1 for stereo scenario relative information */
-	struct imgsensor_mode_struct custom2;/* custom2 for stereo scenario relative information */
-	struct imgsensor_mode_struct custom3;/* custom3 for stereo scenario relative information */
-	struct imgsensor_mode_struct custom4;/* custom4 for stereo scenario relative information */
-	struct imgsensor_mode_struct custom5;/* custom5 for stereo scenario relative information */
+	struct imgsensor_mode_struct hs_video;    /* high speed video scenario relative information */
+	struct imgsensor_mode_struct slim_video;  /* slim video for VT scenario relative information */
+	struct imgsensor_mode_struct custom1;     /* custom1 for stereo scenario relative information */
+	struct imgsensor_mode_struct custom2;     /* custom2 for stereo scenario relative information */
+	struct imgsensor_mode_struct custom3;     /* custom3 for stereo scenario relative information */
+	struct imgsensor_mode_struct custom4;     /* custom4 for stereo scenario relative information */
+	struct imgsensor_mode_struct custom5;     /* custom5 for stereo scenario relative information */
 	kal_uint8 ae_shut_delay_frame;            /* shutter delay frame for AE cycle */
 	kal_uint8 ae_sensor_gain_delay_frame;     /* sensor gain delay frame for AE cycle */
 	kal_uint8 ae_ispGain_delay_frame;         /* isp gain delay frame for AE cycle */
@@ -181,24 +209,23 @@ struct imgsensor_info_struct {
 	kal_uint32 exp_step;
 	kal_uint32 gain_step;
 	kal_uint32 gain_type;
-	kal_uint32 max_frame_length;    /* max framelength by sensor register's limitation */
-	kal_uint8 isp_driving_current;  /* mclk driving current */
-	kal_uint8 sensor_interface_type;/* sensor_interface_type */
+	kal_uint32 max_frame_length;              /* max framelength by sensor register's limitation */
+	kal_uint8 isp_driving_current;            /* mclk driving current */
+	kal_uint8 sensor_interface_type;          /* sensor_interface_type */
 	kal_uint8 mipi_sensor_type;
 	/* 0, MIPI_OPHY_NCSI2; 1, MIPI_OPHY_CSI2, default is NCSI2, don't modify this para */
 	kal_uint8 mipi_settle_delay_mode;
 	/* 0, high speed signal auto detect; 1, use settle delay, unit is ns*/
 	/* default is auto detect, don't modify this para */
 	kal_uint8 sensor_output_dataformat;       /* sensor output first pixel color */
-	kal_uint8 mclk;             /* mclk value, suggest 24 or 26 for 24Mhz or 26Mhz */
-	kal_uint8 mipi_lane_num;    /* mipi lane num */
+	kal_uint8 mclk;                           /* mclk value, suggest 24 or 26 for 24Mhz or 26Mhz */
+	kal_uint8 mipi_lane_num;                  /* mipi lane num */
 	kal_uint8 i2c_addr_table[5];
 	kal_uint32 i2c_speed;
 	/* record sensor support all write id addr, only supprt 4must end with 0xff */
 };
 
-extern int iReadRegI2C(u8 *a_pSendData, u16 a_sizeSendData,
-	u8 *a_pRecvData, u16 a_sizeRecvData, u16 i2cId);
+extern int iReadRegI2C(u8 *a_pSendData, u16 a_sizeSendData, u8 *a_pRecvData, u16 a_sizeRecvData, u16 i2cId);
 extern int iWriteRegI2C(u8 *a_pSendData, u16 a_sizeSendData, u16 i2cId);
 extern int iWriteReg(u16 a_u2Addr, u32 a_u4Data, u32 a_u4Bytes, u16 i2cId);
 extern int iMultiReadReg(u16 a_u2Addr, u8 *a_puBuff, u16 i2cId, u8 number);

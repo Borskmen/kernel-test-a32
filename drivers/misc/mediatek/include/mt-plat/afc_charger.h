@@ -11,7 +11,7 @@
 #define SYNC_PULSE		(UI >> 2)
 #define RESET_DELAY		(UI * 100)
 
-#define AFC_RETRY_CNT			5
+#define AFC_RETRY_CNT			3
 #define AFC_RETRY_MAX			10
 #define VBUS_RETRY_MAX		5
 #define AFC_SPING_CNT			7
@@ -19,6 +19,9 @@
 #define AFC_SPING_MAX			20
 
 struct gpio_afc_pdata {
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *pinctrl_input;
+	struct pinctrl_state *pinctrl_output;
 	int gpio_afc_switch;
 	int gpio_afc_data;
 };

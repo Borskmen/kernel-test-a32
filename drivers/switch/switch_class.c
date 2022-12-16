@@ -13,7 +13,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
-*/
+ */
 
 #include <linux/module.h>
 #include <linux/types.h>
@@ -34,6 +34,7 @@ static ssize_t state_show(struct device *dev, struct device_attribute *attr,
 
 	if (sdev->print_state) {
 		int ret = sdev->print_state(sdev, buf);
+
 		if (ret >= 0)
 			return ret;
 	}
@@ -48,6 +49,7 @@ static ssize_t name_show(struct device *dev, struct device_attribute *attr,
 
 	if (sdev->print_name) {
 		int ret = sdev->print_name(sdev, buf);
+
 		if (ret >= 0)
 			return ret;
 	}

@@ -274,9 +274,6 @@ static int mt6362_fled_brightness_set(struct led_classdev *cdev,
 	}
 
 	if (brightness == LED_OFF) {
-#ifdef CONFIG_MTK_FLASHLIGHT_DLPT
-		flashlight_kicker_pbm(0);
-#endif
 		rv = regmap_update_bits(data->regmap, mtcdev->source_enable_reg,
 					mtcdev->source_enable_mask, 0);
 		if (rv)
@@ -682,14 +679,9 @@ static void mt6362_init_v4l2_flash_config(struct led_classdev_flash *flcdev,
 {
 	struct led_classdev *lcdev = &flcdev->led_cdev;
 	struct led_flash_setting *s = &v4l2_config->intensity;
-	int ret = 0;
 
-	ret = snprintf(v4l2_config->dev_name, sizeof(v4l2_config->dev_name),
-		       "%s", lcdev->name);
-	if (ret < 0) {
-		dev_err(lcdev->dev, "%s snprintf error\n", __func__);
-		return;
-	}
+	snprintf(v4l2_config->dev_name,
+		 sizeof(v4l2_config->dev_name), "%s", lcdev->name);
 
 	s->min = MT6362_TORCHCURR_MIN;
 	s->step = MT6362_TORCHCURR_STEP;
@@ -862,9 +854,8 @@ static ssize_t mt6362_strobe_store(struct flashlight_arg arg)
 {
 	struct led_classdev_flash *flcdev;
 	struct led_classdev *lcdev;
-	uint32_t channel = (uint32_t)arg.channel;
 
-	flcdev = mt6362_flash_class[channel];
+	flcdev = mt6362_flash_class[arg.channel];
 	lcdev = &flcdev->led_cdev;
 	mt6362_fled_brightness_set(lcdev, 1);
 	msleep(arg.dur);
@@ -954,12 +945,8 @@ static int mt6362_leds_parse_dt(struct platform_device *pdev,
 		of_property_read_u32(child, "type", &mtcdev->dev_id.type);
 		of_property_read_u32(child, "ct", &mtcdev->dev_id.ct);
 		of_property_read_u32(child, "part", &mtcdev->dev_id.part);
-		rv = snprintf(mtcdev->dev_id.name, FLASHLIGHT_NAME_SIZE,
-			      flcdev->led_cdev.name);
-		if (rv < 0) {
-			dev_err(&pdev->dev, "%s snprintf error\n", __func__);
-			return -EINVAL;
-		}
+		snprintf(mtcdev->dev_id.name, FLASHLIGHT_NAME_SIZE,
+				flcdev->led_cdev.name);
 		mtcdev->dev_id.channel = reg;
 		mt6362_flash_class[reg] = flcdev;
 		mtcdev->dev_id.decouple = 0;

@@ -397,8 +397,7 @@ struct regulator_config {
 
 #ifdef CONFIG_SEC_PM
 	bool skip_gpio_request;
-#endif /* CONFIG_SEC_PM */
-
+#endif
 	bool ena_gpio_initialized;
 	int ena_gpio;
 	unsigned int ena_gpio_invert:1;

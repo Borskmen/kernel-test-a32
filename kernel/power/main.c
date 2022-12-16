@@ -14,11 +14,14 @@
 #include <linux/pm-trace.h>
 #include <linux/workqueue.h>
 #include <linux/debugfs.h>
+#ifdef CONFIG_SEC_NAD
 #include <linux/proc_fs.h>
+#endif
 #include <linux/seq_file.h>
 #ifdef CONFIG_SEC_PM
 #include <linux/fb.h>
-#endif /* CONFIG_SEC_PM */
+#endif
+
 #include "power.h"
 
 DEFINE_MUTEX(pm_mutex);
@@ -325,8 +328,7 @@ static struct attribute_group suspend_attr_group = {
 	.attrs = suspend_attrs,
 };
 
-//#ifdef CONFIG_DEBUG_FS
-#if 1
+#if defined(CONFIG_DEBUG_FS) || defined(CONFIG_SEC_NAD)
 static int suspend_stats_show(struct seq_file *s, void *unused)
 {
 	int i, index, last_dev, last_errno, last_step;
@@ -399,12 +401,14 @@ static int __init pm_debugfs_init(void)
 {
 	debugfs_create_file("suspend_stats", S_IFREG | S_IRUGO,
 			NULL, NULL, &suspend_stats_operations);
+#ifdef CONFIG_SEC_NAD
 	proc_create("suspend_stats", 0644, NULL, &suspend_stats_operations);
+#endif
 	return 0;
 }
 
 late_initcall(pm_debugfs_init);
-#endif /* CONFIG_DEBUG_FS */
+#endif /* CONFIG_DEBUG_FS || CONFIG_SEC_NAD */
 
 #endif /* CONFIG_PM_SLEEP */
 
@@ -821,17 +825,29 @@ power_attr(pm_freeze_timeout);
 
 #endif	/* CONFIG_FREEZER*/
 
-#ifdef CONFIG_FOTA_LIMIT
+#if defined(CONFIG_FOTA_LIMIT)
 static char fota_limit_str[] =
-#ifdef CONFIG_MACH_MT6877
+#if defined(CONFIG_MACH_MT6853)
 	"[START]\n"
-	"/sys/power/cpufreq_max_limit 1430000\n"
+	"/sys/power/cpufreq_max_limit 1418000\n"
+	"[STOP]\n"
+	"/sys/power/cpufreq_max_limit -1\n"
+	"[END]\n";
+#elif defined(CONFIG_MACH_MT6768)
+	"[START]\n"
+	"/sys/power/cpufreq_max_limit 1443000\n"
+	"[STOP]\n"
+	"/sys/power/cpufreq_max_limit -1\n"
+	"[END]\n";
+#elif defined(CONFIG_MACH_MT6739)
+	"[START]\n"
+	"/sys/power/cpufreq_max_limit 1495000\n"
 	"[STOP]\n"
 	"/sys/power/cpufreq_max_limit -1\n"
 	"[END]\n";
 #else
 	"[NOT_SUPPORT]\n";
-#endif /* CONFIG_MACH_MT6877 */
+#endif
 
 static ssize_t fota_limit_show(struct kobject *kobj,
 					struct kobj_attribute *attr,
@@ -879,7 +895,7 @@ static struct attribute * g[] = {
 #ifdef CONFIG_FREEZER
 	&pm_freeze_timeout_attr.attr,
 #endif
-#ifdef CONFIG_FOTA_LIMIT
+#if defined(CONFIG_FOTA_LIMIT)
 	&fota_limit_attr.attr,
 #endif /* CONFIG_FOTA_LIMIT */
 	NULL,
@@ -937,7 +953,7 @@ static int state_change_fb_notifier_callback(struct notifier_block *nb,
 static struct notifier_block fb_notifier = {
 	.notifier_call = state_change_fb_notifier_callback,
 };
-#endif /* CONFIG_SEC_PM */
+#endif
 
 static int __init pm_init(void)
 {
@@ -957,7 +973,7 @@ static int __init pm_init(void)
 #ifdef CONFIG_SEC_PM
 	fb_register_client(&fb_notifier);
 	INIT_DELAYED_WORK(&ws_work, handle_ws_work);
-#endif /* CONFIG_SEC_PM */	
+#endif
 	return pm_autosleep_init();
 }
 

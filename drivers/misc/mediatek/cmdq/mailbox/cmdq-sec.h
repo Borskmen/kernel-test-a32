@@ -64,9 +64,6 @@ struct cmdq_sec_addr_meta {
 	uint32_t offset;	/* [IN]_b, buffser offset to secure handle */
 	uint32_t size;		/* buffer size */
 	uint32_t port;		/* hw port id (i.e. M4U port id) */
-	uint32_t sec_id;
-	uint32_t useSecIdinMeta;
-	int32_t ionFd;
 };
 
 struct cmdq_sec_data {
@@ -106,9 +103,6 @@ struct cmdq_sec_data {
 
 	/* MTEE */
 	bool mtee;
-
-	/* iommu_sec_id */
-	int32_t sec_id;
 };
 
 /* implementation in cmdq-sec-helper.c */
@@ -120,7 +114,7 @@ s32 cmdq_sec_pkt_set_payload(struct cmdq_pkt *pkt, u8 idx,
 	const u32 meta_size, u32 *meta);
 s32 cmdq_sec_pkt_write_reg(struct cmdq_pkt *pkt, u32 addr, u64 base,
 	const enum CMDQ_IWC_ADDR_METADATA_TYPE type,
-	const u32 offset, const u32 size, const u32 port, uint32_t sec_id);
+	const u32 offset, const u32 size, const u32 port);
 s32 cmdq_sec_pkt_assign_metadata(struct cmdq_pkt *pkt,
 	u32 count, void *meta_array);
 void cmdq_sec_dump_secure_data(struct cmdq_pkt *pkt);
@@ -129,9 +123,8 @@ void cmdq_sec_err_dump(struct cmdq_pkt *pkt, struct cmdq_client *client,
 	u64 **inst, const char **dispatch);
 
 /* MTEE */
-void cmdq_sec_pkt_set_mtee(struct cmdq_pkt *pkt, const bool enable, const int32_t sec_id);
+void cmdq_sec_pkt_set_mtee(struct cmdq_pkt *pkt, const bool enable);
 
 /* implementation in cmdq-sec-mailbox.c */
-void cmdq_sec_mbox_switch_normal(struct cmdq_client *cl, const bool mtee);
-void cmdq_sec_mbox_stop(struct cmdq_client *cl);
+void cmdq_sec_mbox_switch_normal(struct cmdq_client *cl);
 #endif

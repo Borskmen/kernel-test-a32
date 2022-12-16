@@ -32,9 +32,7 @@
 #include <linux/muic/common/muic.h>
 #include <linux/muic/common/muic_sysfs.h>
 #include <linux/sec_class.h>
-#if IS_ENABLED(CONFIG_BATTERY_SAMSUNG)
 #include <linux/battery/sec_battery_common.h>
-#endif
 #if IS_BUILTIN(CONFIG_MUIC_NOTIFIER)
 #if defined(CONFIG_ARCH_QCOM)
 #include <linux/sec_param.h>
@@ -461,7 +459,7 @@ static ssize_t muic_sysfs_vbus_value_show(struct device *dev,
 	return sprintf(buf, "%d\n", val);
 }
 
-#if IS_ENABLED(CONFIG_MUIC_HV)
+#if IS_ENABLED(CONFIG_HV_MUIC_VOLTAGE_CTRL)
 static ssize_t muic_sysfs_afc_disable_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -484,9 +482,7 @@ static ssize_t muic_sysfs_set_afc_disable(struct device *dev,
 	bool curr_val = pdata->afc_disable;
 	int ret = 0;
 	int param_val = 0;
-#if IS_ENABLED(CONFIG_BATTERY_SAMSUNG)
 	union power_supply_propval psy_val;
-#endif
 
 	pr_info("%s+\n", __func__);
 	if (!strncasecmp(buf, "1", 1)) {
@@ -502,13 +498,13 @@ static ssize_t muic_sysfs_set_afc_disable(struct device *dev,
 	param_val = pdata->afc_disable ? '1' : '0';
 
 #if IS_BUILTIN(CONFIG_MUIC_NOTIFIER)
-#if defined(CONFIG_USB_DWC3_MSM)
+#if defined(CONFIG_ARCH_QCOM)
 	ret = sec_set_param(param_index_afc_disable, &param_val);
 #else
 	ret = sec_set_param(CM_OFFSET + 1, (char)param_val);
 #endif
-	if ((!IS_ENABLED(CONFIG_USB_DWC3_MSM) && ret < 0) ||
-			(IS_ENABLED(CONFIG_USB_DWC3_MSM) && ret == false)) {
+	if ((!IS_ENABLED(CONFIG_ARCH_QCOM) && ret < 0) ||
+			(IS_ENABLED(CONFIG_ARCH_QCOM) && ret == false)) {
 		pr_err("%s:set_param failed - %02x:%02x(%d)\n", __func__,
 			param_val, curr_val, ret);
 
@@ -518,10 +514,8 @@ static ssize_t muic_sysfs_set_afc_disable(struct device *dev,
 	}
 #endif
 
-#if IS_ENABLED(CONFIG_BATTERY_SAMSUNG)
 	psy_val.intval = param_val;
 	psy_do_property("battery", set, POWER_SUPPLY_EXT_PROP_HV_DISABLE, psy_val);
-#endif
 
 	pr_info("%s afc_disable(%d)\n", __func__, pdata->afc_disable);
 
@@ -555,7 +549,7 @@ static ssize_t muic_sysfs_set_afc_set_voltage(struct device *dev,
 	pr_info("%s ret=%d-\n", __func__, ret);
 	return count;
 }
-#endif /* CONFIG_MUIC_HV */
+#endif /* CONFIG_HV_MUIC_VOLTAGE_CTRL */
 
 #if IS_ENABLED(CONFIG_HICCUP_CHARGER)
 static ssize_t hiccup_show(struct device *dev,
@@ -622,12 +616,12 @@ static DEVICE_ATTR(apo_factory, 0664,
 		muic_sysfs_apo_factory_show,
 		muic_sysfs_set_apo_factory);
 static DEVICE_ATTR(vbus_value, 0444, muic_sysfs_vbus_value_show, NULL);
-#if IS_ENABLED(CONFIG_MUIC_HV)
+#if IS_ENABLED(CONFIG_HV_MUIC_VOLTAGE_CTRL)
 static DEVICE_ATTR(afc_disable, 0664,
 		muic_sysfs_afc_disable_show, muic_sysfs_set_afc_disable);
 static DEVICE_ATTR(afc_set_voltage, 0220,
 		NULL, muic_sysfs_set_afc_set_voltage);
-#endif /* CONFIG_MUIC_HV */
+#endif /* CONFIG_HV_MUIC_VOLTAGE_CTRL */
 #if IS_ENABLED(CONFIG_HICCUP_CHARGER)
 static DEVICE_ATTR_RW(hiccup);
 #endif /* CONFIG_HICCUP_CHARGER */
@@ -651,10 +645,10 @@ static struct attribute *muic_sysfs_attributes[] = {
 	&dev_attr_audio_path.attr,
 	&dev_attr_apo_factory.attr,
 	&dev_attr_vbus_value.attr,
-#if IS_ENABLED(CONFIG_MUIC_HV)
+#if IS_ENABLED(CONFIG_HV_MUIC_VOLTAGE_CTRL)
 	&dev_attr_afc_disable.attr,
 	&dev_attr_afc_set_voltage.attr,
-#endif /* CONFIG_MUIC_HV */
+#endif /* CONFIG_HV_MUIC_VOLTAGE_CTRL */
 #if IS_ENABLED(CONFIG_HICCUP_CHARGER)
 	&dev_attr_hiccup.attr,
 #endif /* CONFIG_HICCUP_CHARGER */

@@ -1588,49 +1588,17 @@ static void night_mode(kal_bool enable)
 	/* No Need to implement this function */
 }
 
-static int wait_stream_changes(kal_uint32 addr, kal_uint32 val)
-{
-	kal_uint32 read_val = 0;
-	kal_uint16 read_addr = 0;
-	kal_uint32 max_cnt = 0, cur_cnt = 0;
-	unsigned long wait_delay_ms = 0;
-
-	read_addr = addr;
-	wait_delay_ms = 5;
-	max_cnt = 150;
-	cur_cnt = 0;
-
-	read_val = read_cmos_sensor(read_addr);
-
-	while (read_val != val) {
-		mDELAY(wait_delay_ms);
-		read_val = read_cmos_sensor(read_addr);
-
-		LOG_INF("read addr = 0x%.2x, val = 0x%.2x", addr, read_val);
-		cur_cnt++;
-
-		if (cur_cnt >= max_cnt) {
-			LOG_INF("stream timeout: %d ms\n", (max_cnt * wait_delay_ms));
-			break;
-		}
-	}
-	LOG_INF("wait time: %d ms\n", (cur_cnt * wait_delay_ms));
-	return 0;
-}
-
 static kal_uint32 streaming_control(kal_bool enable)
 {
 	LOG_INF("streaming_enable(0=Sw Standby,1=streaming): %d\n", enable);
 	if (enable) {
 		write_cmos_sensor(0xfe, 0x00);
 		write_cmos_sensor(0x3e, 0x91);
-		//10 ms delay for stabilization
-		mDELAY(10);
 	} else {
 		write_cmos_sensor(0xfe, 0x00);
-		write_cmos_sensor(0x3e, 0x00);
-		wait_stream_changes(0x3e, 0x00);
+		write_cmos_sensor(0x3e, 0x01);
 	}
+	usleep_range(10000, 10100);
 	return ERROR_NONE;
 }
 

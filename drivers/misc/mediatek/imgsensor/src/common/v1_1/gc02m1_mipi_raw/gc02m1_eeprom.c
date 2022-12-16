@@ -34,8 +34,8 @@
 
 #define Sleep(ms) mdelay(ms)
 
-#define GC02M1_EEPROM_READ_ID  0xA5
-#define GC02M1_EEPROM_WRITE_ID 0xA4
+#define GC02M1_EEPROM_READ_ID  0xA0
+#define GC02M1_EEPROM_WRITE_ID 0xA1
 #define GC02M1_I2C_SPEED       100
 #define GC02M1_MAX_OFFSET      0xFFFF
 

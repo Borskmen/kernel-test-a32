@@ -66,9 +66,8 @@
  ******************************************************************************/
 enum DEVAPC_DT_NODE_INDEX {
 	DT_DEVAPC_PD_IDX = 0,
-	DT_DEVAPC_AO_IDX = 1,
-	DT_DEVAPC_SWP_IDX = 2,
-	DT_SRAMROM_IDX = 3,
+	DT_DEVAPC_AO_IDX,
+	DT_SRAMROM_IDX,
 };
 
 enum DEVAPC_PD_REG_TYPE {
@@ -212,7 +211,6 @@ struct mtk_devapc_soc {
 	const char* (*subsys_get)(uint32_t index);
 	const char* (*master_get)(int bus_id, uint32_t vio_addr,
 			int vio_idx);
-	uint32_t (*shift_group_get)(uint32_t vio_idx);
 };
 
 void handle_sramrom_vio(void);

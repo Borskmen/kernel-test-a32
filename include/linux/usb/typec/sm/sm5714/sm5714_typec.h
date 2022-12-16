@@ -98,11 +98,9 @@
 			SM5714_REG_INT_STATUS5_SBU2_OVP |\
 			SM5714_REG_INT_STATUS5_CC_ABNORMAL)
 
-#define SM5714_ATTACH_SOURCE				0x01
+#define SM5714_ATTACH_SOURCE			0x01
 #define SM5714_ATTACH_SINK				(0x01 << SM5714_ATTACH_SOURCE)
 #define SM5714_ATTACH_AUDIO				0x03
-#define SM5714_ATTACH_UN_ORI_DEBUG_SOURCE		(0x01 << SM5714_ATTACH_SINK)
-#define SM5714_ATTACH_ORI_DEBUG_SOURCE			0x05
 #define SM5714_ATTACH_TYPE				0x07
 #define SM5714_ADV_CURR					0x18
 #define SM5714_CABLE_FLIP				0x20
@@ -270,7 +268,6 @@ struct sm5714_phydrv_data {
 	struct mutex _mutex;
 	struct mutex poll_mutex;
 	struct mutex lpm_mutex;
-	struct mutex i2c_lock;
 	int vconn_en;
 	int irq_gpio;
 	int irq;
@@ -300,7 +297,6 @@ struct sm5714_phydrv_data {
 	bool is_timer_expired;
 	wait_queue_head_t suspend_wait;
 	struct wakeup_source	*irq_ws;
-	int cc_open_cmd;
 	int check_msg_pass;
 	int rid;
 	int is_attached;
@@ -365,9 +361,6 @@ extern int sm5714_get_pd_support(struct sm5714_phydrv_data *usbpd_data);
 #endif
 #if defined(CONFIG_SM5714_SUPPORT_SBU)
 void sm5714_short_state_check(void *_data);
-#endif
-#if IS_ENABLED(CONFIG_HICCUP_CC_DISABLE)
-extern void sm5714_cc_control_command(int is_off);
 #endif
 void sm5714_set_enable_pd_function(void *_data, int enable);
 void sm5714_vbus_turn_on_ctrl(struct sm5714_phydrv_data *usbpd_data, bool enable);

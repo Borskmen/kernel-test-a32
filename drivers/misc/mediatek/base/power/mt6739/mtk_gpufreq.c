@@ -1790,6 +1790,7 @@ struct mt_gpufreq_power_table_info *pass_gpu_table_to_eara(void)
 	return mt_gpufreqs_power;
 }
 
+
 /************************************************
  * frequency adjust interface for thermal protect
  *************************************************/
@@ -2199,6 +2200,7 @@ unsigned int mt_gpufreq_get_seg_max_opp_index(void)
 {
 	return g_gpufreq_max_id;
 }
+
 
 /************************************************
  * return current GPU thermal limit index

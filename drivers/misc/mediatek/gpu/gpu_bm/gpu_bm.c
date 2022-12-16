@@ -33,6 +33,7 @@ struct v1_data {
 	unsigned int freq;
 };
 struct v1_data *gpu_info_buf;
+//uint32_t __iomem *gpu_info_buf;
 
 static void _mgq_proc_show_v1(struct seq_file *m)
 {
@@ -40,6 +41,8 @@ static void _mgq_proc_show_v1(struct seq_file *m)
 	seq_printf(m, "frame: \t%d\n", gpu_info_buf->frame);
 	seq_printf(m, "job: \t%d\n", gpu_info_buf->job);
 	seq_printf(m, "freq: \t%d\n", gpu_info_buf->freq);
+	//seq_printf(m, "bw: \t0x%x\n", readl(gpu_info_buf + 5));
+	//seq_printf(m, "pbw: \t0x%x\n", readl(gpu_info_buf + 6));
 }
 
 static int _mgq_proc_show(struct seq_file *m, void *v)
@@ -86,24 +89,24 @@ static int _MTKGPUQoS_initDebugFS(void)
 	return 0;
 }
 
+struct timer_list timer_setupFW;
+
 struct setupfw_t {
 	phys_addr_t phyaddr;
 	size_t size;
 };
 
-static struct setupfw_t setupfw_data;
-static void setupfw_work_handler(struct work_struct *work);
-static DECLARE_DELAYED_WORK(g_setupfw_work, setupfw_work_handler);
-
-static void setupfw_work_handler(struct work_struct *work)
+static void setupfw_timer_callback(unsigned long _data)
 {
+#ifdef MTK_QOS_FRAMEWORK
 	struct qos_ipi_data qos_d;
 	int ret;
+	struct setupfw_t data = *(struct setupfw_t *)_data;
 
 	qos_d.cmd = QOS_IPI_SETUP_GPU_INFO;
-	qos_d.u.gpu_info.addr = (unsigned int)setupfw_data.phyaddr;
-	qos_d.u.gpu_info.addr_hi = (unsigned int)(setupfw_data.phyaddr >> 32);
-	qos_d.u.gpu_info.size = (unsigned int)setupfw_data.size;
+	qos_d.u.gpu_info.addr = (unsigned int)data.phyaddr;
+	qos_d.u.gpu_info.addr_hi = (unsigned int)(data.phyaddr >> 32);
+	qos_d.u.gpu_info.size = (unsigned int)data.size;
 	ret = qos_ipi_to_sspm_command(&qos_d, 4);
 
 	pr_debug("%s: addr:0x%x, addr_hi:0x%x, ret:%d\n",
@@ -112,22 +115,35 @@ static void setupfw_work_handler(struct work_struct *work)
 		qos_d.u.gpu_info.addr_hi,
 		ret);
 
-	if (ret == 1) {
-		pr_debug("%s: sspm_ipi success! (%d)\n", __func__, ret);
+	if (ret == 0) {
+		kfree((void *)_data);
 	} else {
 		pr_debug("%s: sspm_ipi fail (%d)\n", __func__, ret);
-		schedule_delayed_work(&g_setupfw_work, 5 * HZ);
+
+		timer_setupFW.expires = jiffies + HZ * 5;
+		add_timer(&timer_setupFW);
 	}
+#endif
 }
-
-
 
 static void _MTKGPUQoS_setupFW(phys_addr_t phyaddr, size_t size)
 {
-	setupfw_data.phyaddr = phyaddr;
-	setupfw_data.size = size;
+	struct setupfw_t *_data = (struct setupfw_t *)
+			kmalloc(sizeof(struct setupfw_t), GFP_KERNEL);
 
-	schedule_delayed_work(&g_setupfw_work, 1);
+	if (_data == NULL) {
+		pr_debug("%s: kmalloc fail\n", __func__);
+		return;
+	}
+	_data->phyaddr = phyaddr;
+	_data->size = size;
+
+	init_timer(&timer_setupFW);
+	timer_setupFW.function = setupfw_timer_callback;
+	timer_setupFW.data = (unsigned long)_data;
+	timer_setupFW.expires = jiffies;
+
+	setupfw_timer_callback(timer_setupFW.data);
 }
 
 static void bw_v1_gpu_power_change_notify(int power_on)

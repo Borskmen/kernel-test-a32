@@ -1,18 +1,3 @@
-/*
- *  Copyright (C) 2020, Samsung Electronics Co. Ltd. All Rights Reserved.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- */
-
 #include "../comm/shub_comm.h"
 #include "../sensorhub/shub_device.h"
 #include "../sensormanager/shub_sensor.h"
@@ -100,14 +85,9 @@ int save_gyro_calibration_file(s16 *cal_data)
 	return ret;
 }
 
-int parsing_gyro_calibration(char *dataframe, int *index, int frame_len)
+int parsing_gyro_calibration(char *dataframe, int *index)
 {
 	s16 caldata[3] = {0, };
-
-	if (*index + sizeof(caldata) > frame_len) {
-		shub_errf("parsing error");
-		return -EINVAL;
-	}
 
 	shub_infof("Gyro caldata received from MCU");
 	memcpy(caldata, dataframe + (*index), sizeof(caldata));
@@ -152,10 +132,9 @@ get_gyroscope_function_pointer *get_gyro_funcs_ary[] = {
 	get_gyroscope_icm42605m_function_pointer,
 	get_gyroscope_lsm6dsl_function_pointer,
 	get_gyroscope_lsm6dsotr_function_pointer,
-	get_gyroscope_icm42632m_function_pointer,
 };
 
-int init_gyroscope_chipset(void)
+int init_gyroscope_chipset(char *name, char *vendor)
 {
 	uint64_t i;
 	struct shub_sensor *sensor = get_sensor(SENSOR_TYPE_GYROSCOPE);
@@ -167,8 +146,10 @@ int init_gyroscope_chipset(void)
 
 	shub_infof("");
 
-	for (i = 0; i < ARRAY_SIZE(get_gyro_funcs_ary); i++) {
-		funcs = get_gyro_funcs_ary[i](sensor->spec.name);
+	strcpy(sensor->chipset_name, name);
+	strcpy(sensor->vendor, vendor);
+	for (i = 0; i < ARRAY_LEN(get_gyro_funcs_ary); i++) {
+		funcs = get_gyro_funcs_ary[i](name);
 		if (funcs) {
 			data->chipset_funcs = funcs;
 			break;
@@ -176,7 +157,7 @@ int init_gyroscope_chipset(void)
 	}
 
 	if (!data->chipset_funcs) {
-		shub_errf("cannot find gyroscope sensor chipset");
+		shub_errf("cannot find gyroscope sensor chipset (%s)", name);
 		return -EINVAL;
 	}
 

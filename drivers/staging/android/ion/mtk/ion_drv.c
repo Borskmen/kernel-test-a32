@@ -66,13 +66,6 @@
 #define DEFAULT_PAGE_SIZE 0x1000
 #define PAGE_ORDER 12
 
-#define ION_CACHEOPS_IS_WRITE(type)			\
-	((type) == ION_CACHE_CLEAN_BY_RANGE ||		\
-	 (type) == ION_CACHE_CLEAN_BY_RANGE_USE_PA ||	\
-	 (type) == ION_CACHE_CLEAN_ALL ||		\
-	 (type) == ION_CACHE_FLUSH_BY_RANGE ||		\
-	 (type) == ION_CACHE_FLUSH_BY_RANGE_USE_PA ||	\
-	 (type) == ION_CACHE_FLUSH_ALL)
 struct ion_device *g_ion_device;
 EXPORT_SYMBOL(g_ion_device);
 
@@ -197,12 +190,9 @@ static int ion_check_user_va(unsigned long va, size_t size)
 
 	down_read(&current->mm->mmap_sem);
 	vma = find_vma(current->mm, va_start);
-	if (!vma || va_start < vma->vm_start ||
-	    va_end > vma->vm_end) {
-		ret = 0;
-	} else {
+	if (vma && va_start >= vma->vm_start &&
+	    va_end <= vma->vm_end)
 		ret = vma_is_ion_node(vma);
-	}
 	up_read(&current->mm->mmap_sem);
 
 	return ret;
@@ -596,7 +586,7 @@ static long ion_sys_ioctl(struct ion_client *client, unsigned int cmd,
 		    copy_from_user(&param, (void __user *)arg,
 				   sizeof(struct ion_sys_data));
 		if (ret_copy != 0) {
-			IONMSG("%s:err arg copy failed, ret_copy = %lu. %s(%s),%d, k:%d\n",
+			IONMSG("%s:err arg copy failed, ret_copy = %d. %s(%s),%d, k:%d\n",
 			       __func__, ret_copy, client->name, client->dbg_name,
 			       client->pid, from_kernel);
 			ret = -EFAULT;
@@ -992,10 +982,6 @@ static int ion_drv_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;
 	}
 	pdata = (struct ion_platform_data *)of_device_get_match_data(dev);
-	if (!pdata) {
-		IONMSG("get match data fail\n");
-		return EPROBE_DEFER;
-	}
 #else
 
 	pdata = pdev->dev.platform_data;

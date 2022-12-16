@@ -122,7 +122,7 @@ static ssize_t thresh_low_store(struct device *dev, struct device_attribute *att
 	return size;
 }
 
-u16 get_prox_raw_data(void)
+static ssize_t raw_data_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	u16 raw_data = 0;
 	s32 ms_delay = 20;
@@ -143,13 +143,7 @@ u16 get_prox_raw_data(void)
 		raw_data = sensor_value->prox_raw;
 	}
 
-	return raw_data;
-}
-
-
-static ssize_t raw_data_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%u\n", get_prox_raw_data());
+	return sprintf(buf, "%u\n", raw_data);
 }
 
 static ssize_t prox_avg_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -222,7 +216,6 @@ get_chipset_dev_attrs get_proximity_chipset_dev_attrs[] = {
 	get_proximity_stk3x6x_dev_attrs,
 	get_proximity_stk3328_dev_attrs,
 	get_proximity_tmd4912_dev_attrs,
-	get_proximity_stk33910_dev_attrs,
 };
 
 static void check_proximity_dev_attr(void)
@@ -233,7 +226,7 @@ static void check_proximity_dev_attr(void)
 	while (proximity_attrs[index] != NULL)
 		index++;
 
-	if (!of_property_read_u32_array(np, "prox-position", position, ARRAY_SIZE(position))) {
+	if (!of_property_read_u32_array(np, "prox-position", position, ARRAY_LEN(position))) {
 		if (index < ARRAY_SIZE(proximity_attrs))
 			proximity_attrs[index++] = &dev_attr_prox_position;
 		shub_info("prox-position - %u.%u %u.%u %u.%u", position[0], position[1], position[2], position[3],
@@ -261,8 +254,8 @@ void initialize_proximity_sysfs(void)
 		return;
 	}
 
-	for (i = 0; i < ARRAY_SIZE(get_proximity_chipset_dev_attrs); i++) {
-		chipset_attrs = get_proximity_chipset_dev_attrs[i](sensor->spec.name);
+	for (i = 0; i < ARRAY_LEN(get_proximity_chipset_dev_attrs); i++) {
+		chipset_attrs = get_proximity_chipset_dev_attrs[i](sensor->chipset_name);
 		if (chipset_attrs) {
 			ret = add_sensor_device_attr(proximity_sysfs_device, chipset_attrs);
 			if (ret < 0) {

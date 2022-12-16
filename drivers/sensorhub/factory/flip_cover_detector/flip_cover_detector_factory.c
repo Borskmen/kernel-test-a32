@@ -23,7 +23,6 @@
 #include "flip_cover_detector_factory.h"
 
 #include <linux/slab.h>
-#include <linux/of.h>
 
 struct factory_cover_status_data {
 	char cover_status[10];
@@ -113,7 +112,7 @@ static void factory_data_init(void)
 	shub_infof("[FACTORY] init data : %d %d %d", mag_data[X], mag_data[Y], mag_data[Z]);
 
 	factory_data->axis_select = data->axis_update;
-	factory_data->threshold = (data->threshold_update > 0) ? data->threshold_update : data->threshold_update * (-1);
+	factory_data->threshold = data->threshold_update;
 
 	for (axis = X; axis < AXIS_MAX; axis++) {
 		factory_data->init[axis] = mag_data[axis];
@@ -404,7 +403,7 @@ static void remove_fcd_factorytest(void)
 
 void initialize_flip_cover_detector_factory(bool en)
 {
-	if (!get_sensor(SENSOR_TYPE_FLIP_COVER_DETECTOR) || !check_flip_cover_detector_supported())
+	if (!get_sensor(SENSOR_TYPE_FLIP_COVER_DETECTOR))
 		return;
 
 	if (en)

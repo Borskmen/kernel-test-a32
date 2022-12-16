@@ -40,9 +40,6 @@
 #ifdef FEATURE_RF_CLK_BUF
 #include <mtk_clkbuf_ctl.h>
 #endif
-#ifdef CONFIG_MTK_OTP
-#include <mt-plat/mtk_otp.h>
-#endif
 
 #include "ccci_core.h"
 #include "ccci_bm.h"
@@ -196,6 +193,29 @@ static int get_md_gpio_info(char *gpio_name,
 	return gpio_id;
 }
 
+static void md_drdi_gpio_status_scan(void)
+{
+	int i;
+	int size;
+	int gpio_id;
+	int gpio_md_view;
+	char *curr;
+	int val;
+
+	CCCI_BOOTUP_LOG(0, RPC, "scan didr gpio status\n");
+	for (i = 0; i < ARRAY_SIZE(gpio_mapping_table); i++) {
+		curr = gpio_mapping_table[i].gpio_name_from_md;
+		size = strlen(curr) + 1;
+		gpio_md_view = -1;
+		gpio_id = get_md_gpio_info(curr, size, &gpio_md_view);
+		if (gpio_id >= 0) {
+			val = get_md_gpio_val(gpio_id);
+			CCCI_BOOTUP_LOG(0, RPC, "GPIO[%s]%d(%d@md),val:%d\n",
+					curr, gpio_id, gpio_md_view, val);
+		}
+	}
+}
+
 static int get_dram_type_clk(int *clk, int *type)
 {
 	return -1;
@@ -307,7 +327,7 @@ void get_dtsi_eint_node(int md_id)
 {
 	static int init; /*default is 0*/
 	int i;
-	struct device_node *node = NULL;
+	struct device_node *node;
 
 	if (init)
 		return;
@@ -320,7 +340,7 @@ void get_dtsi_eint_node(int md_id)
 		node = of_find_node_by_name(NULL,
 			eint_node_prop.name[i].node_name);
 		if (node != NULL) {
-			eint_node_prop.ExistFlag |= (1U << i);
+			eint_node_prop.ExistFlag |= (1 << i);
 			get_eint_attr_val(md_id, node, i);
 		} else {
 			CCCI_INIT_LOG(md_id, RPC, "%s: node %d no found\n",
@@ -329,7 +349,7 @@ void get_dtsi_eint_node(int md_id)
 	}
 }
 
-int get_eint_attr_DTSVal(int md_id, const char *name, unsigned int name_len,
+int get_eint_attr_DTSVal(int md_id, char *name, unsigned int name_len,
 			unsigned int type, char *result, unsigned int *len)
 {
 	int i, sim_value;
@@ -341,7 +361,7 @@ int get_eint_attr_DTSVal(int md_id, const char *name, unsigned int name_len,
 		return ERR_SIM_HOT_PLUG_QUERY_TYPE;
 
 	for (i = 0; i < MD_SIM_MAX; i++) {
-		if ((eint_node_prop.ExistFlag & (1U << i)) == 0)
+		if ((eint_node_prop.ExistFlag & (1 << i)) == 0)
 			continue;
 		if (!(strncmp(name,
 			eint_node_prop.name[i].node_name, name_len))) {
@@ -1057,31 +1077,6 @@ static void ccci_rpc_work_helper(struct port_t *port, struct rpc_pkt *pkt,
 			break;
 		}
 #endif
-
-#ifdef CONFIG_MTK_OTP
-		/* Fall through */
-		case IPC_RPC_EFUSE_BLOWING:
-			{
-				unsigned int *buf_data;
-				unsigned int cmd;
-
-				buf_data = (unsigned int *) (pkt[0].buf);
-				cmd = *buf_data;
-
-				tmp_data[1] = otp_ccci_handler(cmd);
-				pkt_num = 0;
-				tmp_data[0] = 0;
-				pkt[pkt_num].len = sizeof(unsigned int);
-				pkt[pkt_num++].buf = (void *)&tmp_data[0];
-				pkt[pkt_num].len = sizeof(unsigned int);
-				pkt[pkt_num++].buf = (void *)&tmp_data[1];
-				CCCI_NORMAL_LOG(md_id, RPC,
-					"[IPC_RPC_EFUSE_BLOWING] cmd = 0x%X, return 0x%X\n",
-					cmd, tmp_data[1]);
-				break;
-			}
-#endif
-
 	case IPC_RPC_CCCI_LHIF_MAPPING:
 		{
 			struct ccci_rpc_queue_mapping *remap;
@@ -1229,7 +1224,7 @@ static void rpc_msg_handler(struct port_t *port, struct sk_buff *skb)
 	struct rpc_buffer *rpc_buf = (struct rpc_buffer *)skb->data;
 	int i, data_len, AlignLength, ret;
 	struct rpc_pkt pkt[RPC_MAX_ARG_NUM];
-	char *ptr = NULL, *ptr_base = NULL;
+	char *ptr, *ptr_base;
 	/* unsigned int tmp_data[128]; */
 	/* size of tmp_data should be >= any RPC output result */
 	unsigned int *tmp_data =
@@ -1356,7 +1351,7 @@ static const struct file_operations rpc_dev_fops = {
 };
 static int port_rpc_init(struct port_t *port)
 {
-	struct cdev *dev = NULL;
+	struct cdev *dev;
 	int ret = 0;
 	static int first_init = 1;
 
@@ -1387,6 +1382,7 @@ static int port_rpc_init(struct port_t *port)
 	if (first_init) {
 		get_dtsi_eint_node(port->md_id);
 		get_md_dtsi_debug();
+		md_drdi_gpio_status_scan();
 		first_init = 0;
 	}
 	return 0;

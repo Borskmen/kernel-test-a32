@@ -66,7 +66,7 @@ static struct m4u_client_t *ion_m4u_client;
 int m4u_log_level = 2;
 int m4u_log_to_uart = 2;
 
-static LIST_HEAD(pseudo_sglist);
+LIST_HEAD(pseudo_sglist);
 /* this is the mutex lock to protect mva_sglist->list*/
 static spinlock_t pseudo_list_lock;
 
@@ -80,7 +80,7 @@ static const struct of_device_id mtk_pseudo_port_of_ids[] = {
 	{}
 };
 
-#define M4U_L2_ENABLE		1
+int M4U_L2_ENABLE = 1;
 
 /* garbage collect related */
 #define MVA_REGION_FLAG_NONE 0x0
@@ -89,7 +89,7 @@ static const struct of_device_id mtk_pseudo_port_of_ids[] = {
 
 static unsigned long pseudo_mmubase[TOTAL_M4U_NUM];
 static unsigned long pseudo_larbbase[SMI_LARB_NR];
-static struct m4u_device *pseudo_mmu_dev;
+struct m4u_device *pseudo_mmu_dev;
 
 static inline unsigned int pseudo_readreg32(
 						unsigned long base,
@@ -950,8 +950,7 @@ int m4u_get_user_pages(int eModuleID, struct task_struct *tsk,
 static int m4u_get_pages(int eModuleID, unsigned long BufAddr,
 			 unsigned long BufSize, unsigned long *pPhys)
 {
-	int ret;
-	unsigned int i;
+	int ret, i;
 	int page_num;
 	unsigned long start_pa;
 	unsigned int write_mode = 0;
@@ -1375,7 +1374,16 @@ int m4u_switch_acp(unsigned int port,
 		return -EINVAL;
 	}
 
+#if 0
+	struct m4u_buf_info_t *pMvaInfo;
+
+	pMvaInfo = pseudo_client_find_buf(ion_m4u_client, iova, 0);
+	if (!pseudo_is_acp_port(port) ||
+	    port != pMvaInfo->port ||
+	    size > pMvaInfo->size) {
+#else
 	if (!pseudo_is_acp_port(port)) {
+#endif
 		M4U_MSG("invalid p:%d, va:0x%lx, sz:0x%lx\n",
 			port, iova, size);
 		return -EINVAL;
@@ -1424,15 +1432,10 @@ static void m4u_add_port_size(unsigned int larb,
 		unknown_port_size += (unsigned int)(size / 1024);
 }
 
-#if BITS_PER_LONG == 32
-void m4u_find_max_port_size(unsigned long long base, unsigned long long max,
-	unsigned int *err_port, unsigned int *err_size)
-#else
 void m4u_find_max_port_size(unsigned long base, unsigned long max,
 	unsigned int *err_port, unsigned int *err_size)
-#endif
 {
-	unsigned int i, j, k, t;
+	int i, j, k, t;
 	int size[PORT_MAX_COUNT] = {0, 0, 0, 0, 0};
 	int port[PORT_MAX_COUNT] = {-1, -1, -1, -1, -1};
 	unsigned int start = (unsigned int)(base / 1024);
@@ -1578,7 +1581,7 @@ int __pseudo_alloc_mva(struct m4u_client_t *client,
 			   struct sg_table *sg_table, unsigned int flags,
 			   unsigned long *retmva)
 {
-	struct mva_sglist *mva_sg = NULL;
+	struct mva_sglist *mva_sg;
 	struct sg_table *table = NULL;
 	int ret;
 	struct device *dev = pseudo_get_larbdev(port);
@@ -1691,13 +1694,12 @@ int __pseudo_alloc_mva(struct m4u_client_t *client,
 					&base, &max, &owner,
 					NULL);
 		M4U_ERR(
-			"err %s, domain:%d(%s(%d):0x%lx~0x%lx) iova:0x%pad+0x%lx, pa=0x%pad, f:0x%x, n:%d-%d, sg_tab:0x%llx\n",
+			"err %s, domain:%d(%s(%d):0x%lx~0x%lx) iova:0x%pad+0x%lx, pa=0x%pad, f:0x%x, n:%d-%d\n",
 			iommu_get_port_name(port), domain,
 			iommu_get_port_name(owner),
 			owner, base, max,
 			&dma_addr, size, &paddr,
-			flags, table->nents, table->orig_nents,
-			(unsigned long long)sg_table);
+			flags, table->nents, table->orig_nents);
 		__m4u_dump_pgtable(NULL, 1, true, 0);
 		if (owner < 0)
 			m4u_find_max_port_size(base, max, &err_port, &err_size);
@@ -1720,11 +1722,6 @@ int __pseudo_alloc_mva(struct m4u_client_t *client,
 	*retmva = dma_addr;
 
 	mva_sg = kzalloc(sizeof(*mva_sg), GFP_KERNEL);
-	if (!mva_sg) {
-		M4U_ERR("alloc mva_sg fail\n");
-		goto ERR_EXIT;
-	}
-
 	mva_sg->table = table;
 	mva_sg->mva = *retmva;
 
@@ -1740,11 +1737,8 @@ int __pseudo_alloc_mva(struct m4u_client_t *client,
 
 	/* pbuf_info for userspace compatible */
 	pbuf_info = pseudo_alloc_buf_info();
-	if (!pbuf_info) {
-		M4U_ERR("alloc pbuf_info fail\n");
-		goto ERR_EXIT;
-	}
-
+	if (!pbuf_info)
+		return -ENOMEM;
 	pbuf_info->va = va;
 	pbuf_info->port = port;
 	pbuf_info->size = size;
@@ -1767,24 +1761,15 @@ int __pseudo_alloc_mva(struct m4u_client_t *client,
 
 ERR_EXIT:
 	if (table &&
-#if BITS_PER_LONG == 32
-	    sg_phys(table->sgl) >= (1ULL << MTK_PHYS_ADDR_BITS))
-#else
 	    sg_phys(table->sgl) >= (1UL << MTK_PHYS_ADDR_BITS))
-#endif
 		ret = -ERANGE;
 	else
 		ret = -EINVAL;
 
 	if (table && free_table) {
-		M4U_ERR("nent:%u--%u, len:0x%lx\n",
-			table->nents, table->orig_nents,
-			(unsigned long)sg_dma_len(table->sgl));/* debug memory corruption */
 		sg_free_table(table);
 		kfree(table);
 	}
-
-	kfree(mva_sg);
 
 	*retmva = 0;
 	return ret;
@@ -2567,7 +2552,7 @@ get_pages_done:
 	kernel_va = 0;
 	kernel_size = 0;
 	kernel_va = vmap(pages, page_num, VM_MAP, PAGE_KERNEL);
-	if (kernel_va == 0 || (uintptr_t)kernel_va & M4U_PAGE_MASK) {
+	if (kernel_va == 0 || (unsigned long)kernel_va & M4U_PAGE_MASK) {
 		M4U_MSG(
 			"mva_map_kernel:vmap fail: page_num=%d, kernel_va=0x%p\n",
 				page_num, kernel_va);
@@ -3054,8 +3039,6 @@ int m4u_map_nonsec_buf(int port, unsigned long mva, unsigned long size)
 	int ret;
 	struct m4u_sec_context *ctx;
 
-	return -EPERM; /* Not allow */
-
 	if ((mva > DMA_BIT_MASK(32)) ||
 	    (mva + size > DMA_BIT_MASK(32))) {
 		M4U_MSG("%s invalid mva:0x%lx, size:0x%lx\n",
@@ -3091,8 +3074,6 @@ int m4u_unmap_nonsec_buffer(unsigned long mva, unsigned long size)
 	int ret;
 	struct m4u_sec_context *ctx;
 
-	return -EPERM;
-
 	if ((mva > DMA_BIT_MASK(32)) ||
 	    (mva + size > DMA_BIT_MASK(32))) {
 		M4U_MSG("%s invalid mva:0x%lx, size:0x%lx\n",
@@ -3124,7 +3105,7 @@ out:
 
 #ifdef M4U_GZ_SERVICE_ENABLE
 static DEFINE_MUTEX(gM4u_gz_sec_init);
-static bool m4u_gz_en[SEC_ID_COUNT];
+bool m4u_gz_en[SEC_ID_COUNT];
 
 static int __m4u_gz_sec_init(int mtk_iommu_sec_id)
 {
@@ -3214,14 +3195,73 @@ m4u_gz_sec_reinit:
 int m4u_map_gz_nonsec_buf(int iommu_sec_id, int port,
 			  unsigned long mva, unsigned long size)
 {
-	return -EPERM; /* Not allow */
+	int ret;
+	struct m4u_gz_sec_context *ctx;
+
+	if ((mva > DMA_BIT_MASK(32)) ||
+	    (mva + size > DMA_BIT_MASK(32))) {
+		M4U_MSG("[MTEE]%s invalid mva:0x%lx, size:0x%lx\n",
+			__func__, mva, size);
+		return -EFAULT;
+	}
+
+	ctx = m4u_gz_sec_ctx_get();
+	if (!ctx)
+		return -EFAULT;
+
+	ctx->gz_m4u_msg->cmd = CMD_M4UTY_MAP_NONSEC_BUFFER;
+	ctx->gz_m4u_msg->iommu_sec_id = iommu_sec_id;
+	ctx->gz_m4u_msg->buf_param.mva = mva;
+	ctx->gz_m4u_msg->buf_param.size = size;
+	ctx->gz_m4u_msg->buf_param.port = port;
+
+	ret = m4u_gz_exec_cmd(ctx);
+	if (ret) {
+		M4U_MSG("[MTEE]m4u exec command fail\n");
+		ret = -1;
+		goto out;
+	}
+	ret = ctx->gz_m4u_msg->rsp;
+
+out:
+	m4u_gz_sec_ctx_put(ctx);
+	return ret;
 }
 
 
 int m4u_unmap_gz_nonsec_buffer(int iommu_sec_id, unsigned long mva,
 				unsigned long size)
 {
-	return -EPERM; /* Not allow */
+	int ret;
+	struct m4u_gz_sec_context *ctx;
+
+	if ((mva > DMA_BIT_MASK(32)) ||
+	    (mva + size > DMA_BIT_MASK(32))) {
+		M4U_MSG("[MTEE]%s invalid mva:0x%lx, size:0x%lx\n",
+			__func__, mva, size);
+		return -EFAULT;
+	}
+
+	ctx = m4u_gz_sec_ctx_get();
+	if (!ctx)
+		return -EFAULT;
+
+	ctx->gz_m4u_msg->cmd = CMD_M4UTY_UNMAP_NONSEC_BUFFER;
+	ctx->gz_m4u_msg->iommu_sec_id = iommu_sec_id;
+	ctx->gz_m4u_msg->buf_param.mva = mva;
+	ctx->gz_m4u_msg->buf_param.size = size;
+
+	ret = m4u_gz_exec_cmd(ctx);
+	if (ret) {
+		M4U_MSG("[MTEE]m4u exec command fail\n");
+		ret = -1;
+		goto out;
+	}
+	ret = ctx->gz_m4u_msg->rsp;
+
+out:
+	m4u_gz_sec_ctx_put(ctx);
+	return ret;
 }
 
 #endif
@@ -3283,7 +3323,7 @@ static long pseudo_ioctl(struct file *filp,
 
 	default:
 		M4U_MSG("MTK M4U ioctl:No such command(0x%x)!!\n", cmd);
-		ret = -EPERM;
+		ret = -EINVAL;
 		break;
 	}
 
@@ -3456,7 +3496,7 @@ static const struct file_operations pseudo_fops = {
 
 static int pseudo_probe(struct platform_device *pdev)
 {
-	unsigned int i, j;
+	int i, j;
 #ifndef CONFIG_FPGA_EARLY_PORTING
 	unsigned int count = 0;
 #endif
@@ -3580,7 +3620,7 @@ static int pseudo_probe(struct platform_device *pdev)
 
 static int pseudo_port_probe(struct platform_device *pdev)
 {
-	int larbid = -1;
+	int larbid;
 	unsigned int fake_nr, i;
 	int ret;
 	struct device *dev;
@@ -3744,23 +3784,6 @@ int pseudo_dump_iova_reserved_region(struct seq_file *s)
 }
 EXPORT_SYMBOL(pseudo_dump_iova_reserved_region);
 
-int pseudo_m4u_sec_init(int mtk_iommu_sec_id)
-{
-	int ret = 0;
-
-#if defined(M4U_GZ_SERVICE_ENABLE)
-	if (mtk_iommu_sec_id >= 0 && mtk_iommu_sec_id < SEC_ID_COUNT) {
-		mutex_lock(&gM4u_gz_sec_init);
-		ret = m4u_gz_sec_init(mtk_iommu_sec_id);
-		mutex_unlock(&gM4u_gz_sec_init);
-	}
-#elif defined(PSEUDO_M4U_TEE_SERVICE_ENABLE)
-	ret = m4u_sec_init();
-#endif
-
-	return ret;
-}
-
 static int pseudo_remove(struct platform_device *pdev)
 {
 	if (pseudo_mmu_dev->m4u_dev_proc_entry)
@@ -3835,5 +3858,6 @@ static void __exit mtk_pseudo_exit(void)
 module_init(mtk_pseudo_init);
 module_exit(mtk_pseudo_exit);
 
-MODULE_DESCRIPTION("MTK pseudo m4u v2 driver based on iommu");
+MODULE_DESCRIPTION("MTK pseudo m4u driver based on iommu");
+MODULE_AUTHOR("Honghui Zhang <honghui.zhang@mediatek.com>");
 MODULE_LICENSE("GPL");

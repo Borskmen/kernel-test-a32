@@ -137,10 +137,6 @@ struct mdp_context {
 
 	/* smi clock usage */
 	atomic_t mdp_smi_usage;
-
-	/* wake lock for prevent suspend */
-	struct wakeup_source *wake_lock;
-	bool wake_locked;
 };
 static struct mdp_context mdp_ctx;
 static struct cmdq_buf_pool mdp_pool;
@@ -292,30 +288,9 @@ s32 cmdq_mdp_get_smi_usage(void)
 	return atomic_read(&mdp_ctx.mdp_smi_usage);
 }
 
-static void cmdq_mdp_lock_wake_lock(bool lock)
-{
-	if (!mdp_ctx.wake_lock)
-		return;
-
-	if (lock) {
-		if (!mdp_ctx.wake_locked) {
-			__pm_stay_awake(mdp_ctx.wake_lock);
-			mdp_ctx.wake_locked = true;
-		}
-	} else {
-		if (mdp_ctx.wake_locked) {
-			__pm_relax(mdp_ctx.wake_lock);
-			mdp_ctx.wake_locked = false;
-		}
-	}
-}
-
 static void cmdq_mdp_common_clock_enable(void)
 {
 	s32 smi_ref = atomic_inc_return(&mdp_ctx.mdp_smi_usage);
-
-	if (smi_ref == 1)
-		cmdq_mdp_lock_wake_lock(true);
 
 	CMDQ_MSG("[CLOCK]MDP SMI clock enable %d\n", smi_ref);
 	cmdq_mdp_get_func()->mdpEnableCommonClock(true);
@@ -330,9 +305,6 @@ static void cmdq_mdp_common_clock_disable(void)
 
 	CMDQ_MSG("[CLOCK]MDP SMI clock disable %d\n", smi_ref);
 	cmdq_mdp_get_func()->mdpEnableCommonClock(false);
-
-	if (smi_ref == 0)
-		cmdq_mdp_lock_wake_lock(false);
 
 	CMDQ_PROF_MMP(cmdq_mmp_get_event()->MDP_clock_smi,
 		MMPROFILE_FLAG_PULSE, smi_ref, 0);
@@ -659,6 +631,8 @@ static void cmdq_mdp_lock_thread(struct cmdqRecStruct *handle)
 		mdp_ctx.thread[thread].mtee = handle->secData.mtee;
 
 	mdp_ctx.thread[thread].task_count++;
+	CMDQ_LOG("%s thread:%d, task_count:%d\n",
+		__func__, thread, mdp_ctx.thread[thread].task_count);
 
 	CMDQ_PROF_END(current->pid, __func__);
 }
@@ -706,6 +680,8 @@ void cmdq_mdp_unlock_thread(struct cmdqRecStruct *handle)
 			"true" : "false",
 			mdp_ctx.thread[thread].acquired ? "true" : "false");
 	mdp_ctx.thread[thread].task_count--;
+	CMDQ_LOG("%s thread:%d, task_count:%d\n",
+		__func__, thread, mdp_ctx.thread[thread].task_count);
 
 	if (!mdp_ctx.thread[thread].task_count)
 		mdp_ctx.thread[thread].mtee = false;
@@ -1256,7 +1232,6 @@ s32 cmdq_mdp_handle_sec_setup(struct cmdqSecDataStruct *secData,
 	}
 	handle->secData.addrMetadatas =
 		(cmdqU32Ptr_t)(unsigned long)p_metadatas;
-
 	return 0;
 #else
 	return 0;
@@ -1584,7 +1559,7 @@ s32 cmdq_mdp_wait(struct cmdqRecStruct *handle,
 
 	wait_cnt = atomic_inc_return(&handle->wait_protect);
 	if (wait_cnt != 1) {
-		CMDQ_LOG(
+		CMDQ_ERR(
 			"wait twice:%d submit:%llu trigger:%llu wait:%llu irq:%llu wakeup:%llu\n",
 			wait_cnt,
 			handle->submit, handle->trigger, handle->beginWait,
@@ -1933,10 +1908,6 @@ void cmdq_mdp_init(void)
 	mdp_ctx.handle_consume_queue =
 		create_singlethread_workqueue("cmdq_mdp_task");
 
-	mdp_ctx.wake_lock = wakeup_source_register(cmdq_dev_get(), "mdp_lock");
-	if (!mdp_ctx.wake_lock)
-		CMDQ_ERR("initialize mtk_mdp_lock wakeup source fail\n");
-
 	mdp_status_dump_notify.notifier_call = cmdq_mdp_status_dump;
 	cmdq_core_register_status_dump(&mdp_status_dump_notify);
 
@@ -1972,8 +1943,6 @@ void cmdq_mdp_deinit(void)
 	}
 
 	cmdq_mdp_pool_clear();
-	wakeup_source_unregister(mdp_ctx.wake_lock);
-	mdp_ctx.wake_lock = NULL;
 }
 
 /* Platform dependent function */

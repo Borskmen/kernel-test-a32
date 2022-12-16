@@ -1,18 +1,3 @@
-/*
- *  Copyright (C) 2020, Samsung Electronics Co. Ltd. All Rights Reserved.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- */
-
 #include <linux/of_gpio.h>
 #include <linux/slab.h>
 
@@ -176,6 +161,7 @@ static int inject_light_ab_additional_data(char *buf, int count)
 {
 	struct light_autobrightness_data *data = get_sensor(SENSOR_TYPE_LIGHT_AUTOBRIGHTNESS)->data;
 
+	data->camera_lux;
 	if (count < 4) {
 		shub_errf("camera lux length error %d", count);
 		return -EINVAL;

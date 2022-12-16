@@ -12,7 +12,6 @@
  *  GNU General Public License for more details.
  *
  */
-
 #include <linux/slab.h>
 
 #include "shub_sensor_dump.h"
@@ -51,10 +50,6 @@ static int store_sensor_dump(int sensor_type, u16 length, u8 *buf)
 
 	/*make file contents*/
 	contents = kzalloc(dump_len, GFP_KERNEL);
-	if (ZERO_OR_NULL_PTR(contents)) {
-		kfree(contents);
-		return -ENOMEM;
-	}
 
 	for (i = 0; i < length; i++) {
 		tmp_ch = ((i % NUM_LINE_ITEM == NUM_LINE_ITEM - 1) || (i - 1 == length)) ? '\n' : ' ';

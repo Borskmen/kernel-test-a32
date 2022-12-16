@@ -271,33 +271,9 @@ void msdc_sd_power(struct msdc_host *host, u32 on)
 		if (host->hw->flags & MSDC_SD_NEED_POWER)
 			card_on = 1;
 
-		/* Disable VMCH OC */
-		if (!card_on)
-			pmic_enable_interrupt(INT_VMCH_OC, 0, "sdcard");
-
 		/* VMCH VOLSEL */
-		msdc_ldo_power(card_on, host->mmc->supply.vmmc, VOL_3000,
+		msdc_ldo_power(card_on, host->mmc->supply.vmmc, VOL_2950,
 			&host->power_flash);
-
-		if (card_on) {
-			if (host->hw->cd_level == 1) {
-				/* 1: high; 0: low, vmch fast off
-				 * hw_det default high active
-				 */
-				pmic_set_register_value(PMIC_RG_LDO_VMCH_SD_POL,
-							0);
-			}
-			pmic_set_register_value(PMIC_RG_LDO_VMCH_SD_EN, 1);
-		} else {
-			udelay(1500);
-			pmic_set_register_value(PMIC_RG_LDO_VMCH_SD_EN, 0);
-		}
-
-		/* Enable VMCH OC */
-		if (card_on) {
-			mdelay(3);
-			pmic_enable_interrupt(INT_VMCH_OC, 1, "sdcard");
-		}
 
 		/* VMC VOLSEL */
 		/* rollback to 0mv in REG_VMC_VOSEL_CAL
@@ -567,6 +543,74 @@ static void msdc_dump_clock_sts_core(char **buff, unsigned long *size,
 	*buf_ptr = '\0';
 	SPREAD_PRINTF(buff, size, m, "%s", buffer);
 }
+
+#ifdef CONFIG_DEBUG_PATCH_CMDQ_EMMC
+void dbgprint_msdcclk(void)
+{
+	msdc_dump_clock_sts_core(NULL, NULL, NULL, NULL);
+}
+
+#undef CHECK_LOG_VALID_MSDCCLK_REG
+void msdc_dump_clock_sts_core_raw(u32* clk_regs)
+{
+	u32 mask,expv;
+	if(!clk_regs)
+		return;
+
+    if (topckgen_base) {
+		clk_regs[0] = MSDC_READ32(topckgen_base + 0x70);
+#ifdef CHECK_LOG_VALID_MSDCCLK_REG 
+		/* topckgen_base + 0x70) = (EMMC:should bit[1:0]=01b, bit[7]=0, bit[10:8]=001b, bit[15]=0) SD: bit[18:16]=001b, bit[23]=0 */
+		mask = 3 | (1<<7) | (7<<8) | (1<<15) | (7<<16) | (1<<23);
+		expv = 1 | (0<<7) | (1<<8) | (0<<15) | (1<<16) | (0<<23);
+		if((clk_regs[0]&mask) != expv)
+			pr_err("msdcclk_reg: topckgen_base+0x70) ="
+					"0x%x(EMMC:should(0x%x) bit[1:0]=01b, bit[7]=0, bit[10:8]=001b," 
+					" bit[15]=0) SD: bit[18:16]=001b, bit[23]=0\n",clk_regs[0], expv);
+#endif
+
+#if defined(CONFIG_MTK_HW_FDE) || defined(CONFIG_MMC_CRYPTO)
+		clk_regs[1] = MSDC_READ32(topckgen_base + 0xa0);
+#ifdef CHECK_LOG_VALID_MSDCCLK_REG
+		/* topckgen_base + 0xa0 = (AES:should bit[26:24]=001b, bit[31]=0) */
+		mask = (7<<24) | (1<<32);
+		expv = 0x01000000;
+		if((clk_regs[1]&mask) != expv)
+            pr_err("msdcclk_reg: topckgen_base+0xa0 = 0x%x(AES:should(0x%x) bit[26:24]=001b, bit[31]=0)\n", clk_regs[1], expv);
+#endif
+#endif
+    }
+    if (infracfg_ao_base) {
+		/* infracfg_ao [0x%p]=0x%x(EMMC:should bit[2]=0b,SD:bit[4]=0b)  */
+		clk_regs[2] = MSDC_READ32(infracfg_ao_base + 0x94);
+#ifdef CHECK_LOG_VALID_MSDCCLK_REG
+        mask = (1<<2) | (1<<4);
+        expv = (0<<2) | (0<<4);
+        if((clk_regs[2]&mask) != expv)
+            pr_err("msdcclk_reg: infracfg_ao+0x94=0x%x(EMMC:should(0x%x) bit[2]=0b,SD:bit[4]=0b)\n", clk_regs[2], expv);
+#endif
+
+#if defined(CONFIG_MTK_HW_FDE) || defined(CONFIG_MMC_CRYPTO)
+		/*infracfg_ao [0x%p]=0x%x(should bit[29]=0b) */
+		clk_regs[3] = MSDC_READ32(infracfg_ao_base + 0xac);
+#ifdef CHECK_LOG_VALID_MSDCCLK_REG
+        mask = (1<<29);
+        expv = (0<<29);
+        if((clk_regs[3]&mask) != expv)
+            pr_err("msdcclk_reg: infracfg_ao+0xac = 0x%x(should(0x%x) bit[29]=0b)\n", clk_regs[3], expv);
+#endif
+#endif
+		/*infracfg_ao [0x%p]=0x%x(EMMC:should bit[9]=0b, SD:bit[9]=0b)*/
+		clk_regs[4] = MSDC_READ32(infracfg_ao_base + 0xc8);
+#ifdef CHECK_LOG_VALID_MSDCCLK_REG
+        mask = (1<<9);
+        expv = (0<<9);
+        if((clk_regs[4]&mask) != expv)
+            pr_err("msdcclk_reg: infracfg_ao+0xc8 = 0x%x(EMMC:should(0x%x) bit[9]=0b)\n", clk_regs[4], expv);
+#endif
+    }
+}
+#endif
 
 void msdc_dump_clock_sts(char **buff, unsigned long *size,
 	struct seq_file *m, struct msdc_host *host)
@@ -1134,7 +1178,7 @@ int msdc_of_parse(struct platform_device *pdev, struct mmc_host *mmc)
 	struct msdc_host *host = mmc_priv(mmc);
 	int ret = 0;
 	int len = 0;
-	u8 id = 0;
+	u8 id;
 	const char *dup_name;
 
 	np = mmc->parent->of_node; /* mmcx node in project dts */
@@ -1158,20 +1202,6 @@ int msdc_of_parse(struct platform_device *pdev, struct mmc_host *mmc)
 	host->mmc = mmc;
 	host->hw = kzalloc(sizeof(struct msdc_hw), GFP_KERNEL);
 
-	if (of_property_read_s32(np, "req_vcore", &host->vcore_opp)) {
-		pr_notice("%s: failed to get req_vcore", __func__);
-		host->vcore_opp = -1;
-	} else {
-		pr_notice("msdc%d:get req_vcore:%d", host->id, host->vcore_opp);
-		/* init VCORE QOS */
-		host->req_vcore = devm_kzalloc(&pdev->dev,
-			sizeof(*host->req_vcore), GFP_KERNEL);
-		if (!host->req_vcore)
-			return -ENOMEM;
-
-		pm_qos_add_request(host->req_vcore, PM_QOS_VCORE_OPP,
-			PM_QOS_VCORE_OPP_DEFAULT_VALUE);
-	}
 	/* iomap register */
 	host->base = of_iomap(np, 0);
 	if (!host->base) {

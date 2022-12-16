@@ -196,9 +196,8 @@ static int mag_i2c_write_block(struct i2c_client *client,
 					u8 addr, u8 *data, u8 len)
 {
 /*address also occupies one byte, the maximum length for write is 7 bytes */
-	int err = 0, num = 0;
+	int err = 0, idx = 0, num = 0;
 	char buf[C_I2C_FIFO_SIZE];
-	unsigned int idx = 0;
 
 	err = 0;
 	mutex_lock(&akm09918_i2c_mutex);
@@ -1216,16 +1215,9 @@ static ssize_t show_shipment_test(struct device_driver *ddri, char *buf)
 static ssize_t show_daemon_name(struct device_driver *ddri, char *buf)
 {
 	char strbuf[AKM09918_BUFSIZE];
-	int ret;
 
-	ret = sprintf(strbuf, "akmd09918");
-	if (ret < 0)
-		pr_debug("%s:strbuf sprintf Error:%d\n", __func__, ret);
-	ret = sprintf(buf, "%s", strbuf);
-	if (ret < 0)
-		pr_debug("%s:strbuf to buf sprintf Error:%d\n", __func__, ret);
-
-	return ret;
+	sprintf(strbuf, "akmd09918");
+	return sprintf(buf, "%s", strbuf);
 }
 
 static ssize_t show_chipinfo_value(struct device_driver *ddri, char *buf)
@@ -1263,17 +1255,12 @@ static ssize_t show_sensordata_value(struct device_driver *ddri, char *buf)
 
 	AKECS_GetData(sensordata, SENSOR_DATA_SIZE);
 
-	ret = sprintf(strbuf, "%d %d %d %d %d %d %d %d %d\n",
+	sprintf(strbuf, "%d %d %d %d %d %d %d %d %d\n",
 		sensordata[0], sensordata[1], sensordata[2],
 		sensordata[3], sensordata[4], sensordata[5],
 		sensordata[6], sensordata[7], sensordata[8]);
-	if (ret < 0)
-		pr_debug("%s:sensor_data sprintf Error:%d\n", __func__, ret);
 
-	ret = sprintf(buf, "%s\n", strbuf);
-	if (ret < 0)
-		pr_debug("%s:sensor_data to buf sprintf Error:%d\n", __func__, ret);
-	return ret;
+	return sprintf(buf, "%s\n", strbuf);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1424,8 +1411,6 @@ static ssize_t show_power_status(struct device_driver *ddri, char *buf)
 	if (ret < 0)
 		pr_debug("%s:%d Error.\n", __func__, __LINE__);
 	res = snprintf(buf, PAGE_SIZE, "0x%04X\n", uData);
-	if (res < 0)
-		pr_debug("%s:PAGE_SIZE snprintf Error:%d\n", __func__, res);
 	return res;
 }
 

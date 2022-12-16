@@ -152,10 +152,9 @@ const char *disp_helper_option_string[DISP_OPT_NUM] = {
 
 const char *disp_helper_option_spy(enum DISP_HELPER_OPT option)
 {
-	unsigned int idx = (unsigned int)option;
 	if (option >= DISP_OPT_NUM)
 		return "unknown option!!";
-	return disp_helper_option_string[idx];
+	return disp_helper_option_string[option];
 }
 
 enum DISP_HELPER_OPT disp_helper_name_to_opt(const char *name)

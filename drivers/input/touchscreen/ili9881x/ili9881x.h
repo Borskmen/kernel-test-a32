@@ -98,7 +98,6 @@
 
 #ifdef CONFIG_SAMSUNG_TUI
 #include <linux/input/stui_inf.h>
-extern struct device *ptsp;
 #endif
 
 #define DRIVER_VERSION			"3.0.3.0.200610"
@@ -892,9 +891,6 @@ struct ilitek_axis_info {
 struct ilitek_ts_data {
 	struct i2c_client *i2c;
 	struct spi_device *spi;
-#ifdef CONFIG_SAMSUNG_TUI
-	struct sec_ts_plat_data *plat_data;	/* only for tui */
-#endif
 	struct input_dev *input;
 	struct input_dev *input_dev_proximity;
 	struct device *dev;

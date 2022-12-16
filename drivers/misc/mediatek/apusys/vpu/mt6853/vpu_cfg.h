@@ -17,12 +17,7 @@
 #include <linux/types.h>
 
 struct vpu_device;
-
-static inline
-void vpu_emi_mpu_set(unsigned long start, unsigned int size)
-{
-}
-
+void vpu_emi_mpu_set(unsigned long start, unsigned int size);
 bool vpu_is_disabled(struct vpu_device *vd);
 
 /* 20180703, 00:00: vpu log mechanism */

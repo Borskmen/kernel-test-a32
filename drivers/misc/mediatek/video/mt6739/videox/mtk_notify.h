@@ -24,7 +24,9 @@
 #include <linux/trace_events.h>
 #include "ddp_hal.h"
 #include "ddp_irq.h"
+#if !defined(CONFIG_SMCDSD_PANEL)
 #include "primary_display.h"
+#endif
 
 
 struct mtk_uevent_dev {

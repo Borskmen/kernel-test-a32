@@ -39,7 +39,6 @@ enum APUSYS_POWER_PARAM {
 
 void apusys_power_debugfs_init(void);
 void apusys_power_debugfs_exit(void);
-int apusys_power_create_procfs(void);
 void fix_dvfs_debug(void);
 
 #endif

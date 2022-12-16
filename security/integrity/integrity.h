@@ -25,6 +25,7 @@ enum five_file_integrity {
 	FIVE_FILE_FSVERITY,
 	FIVE_FILE_HMAC
 };
+
 /* iint action cache flags */
 #define IMA_MEASURE		0x00000001
 #define IMA_MEASURED		0x00000002

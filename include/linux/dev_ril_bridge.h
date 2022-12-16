@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Samsung Electronics.
+ * Copyright (C) 2019 Samsung Electronics.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -33,7 +33,7 @@ struct dev_ril_bridge_msg {
 	void *data;
 };
 
-#if IS_ENABLED(CONFIG_DEV_RIL_BRIDGE)
+#ifdef CONFIG_DEV_RIL_BRIDGE
 extern int register_dev_ril_bridge_event_notifier(struct notifier_block *nb);
 extern int unregister_dev_ril_bridge_event_notifier(struct notifier_block *nb);
 extern int dev_ril_bridge_send_msg(int id, int size, void *buf);

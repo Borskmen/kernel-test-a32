@@ -464,12 +464,10 @@ unsigned int BM_GetBW4(void)
 static inline void aee_simple_print(const char *msg, unsigned int val)
 {
 	char buf[128];
-	int err;
 
-	err = snprintf(buf, sizeof(buf), msg, val);
+	snprintf(buf, sizeof(buf), msg, val);
 #ifdef CONFIG_MTK_AEE_FEATURE
-	if (err > 0)
-		aee_sram_fiq_log(buf);
+	aee_sram_fiq_log(buf);
 #endif
 }
 

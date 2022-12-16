@@ -132,7 +132,7 @@
 #endif
 
 /* EARA_Thermal power budget allocation support */
-#ifdef CONFIG_MTK_EARA_THERMAL /* ALPS04992221 */
+#ifdef CONFIG_MTK_EARA_THERMAL
 #define EARA_THERMAL_SUPPORT
 #endif
 

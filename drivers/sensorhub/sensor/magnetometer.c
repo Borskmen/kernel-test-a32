@@ -1,18 +1,3 @@
-/*
- *  Copyright (C) 2020, Samsung Electronics Co. Ltd. All Rights Reserved.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- */
-
 #include "../comm/shub_comm.h"
 #include "../debug/shub_debug.h"
 #include "../sensorhub/shub_device.h"
@@ -22,7 +7,6 @@
 #include "../utility/shub_utility.h"
 #include "../utility/shub_wakelock.h"
 #include "../utility/shub_file_manager.h"
-#include "flip_cover_detector.h"
 #include "magnetometer.h"
 
 #include <linux/kernel.h>
@@ -30,8 +14,6 @@
 #include <linux/slab.h>
 
 #define MAG_CALIBRATION_FILE_PATH "/efs/FactoryApp/mag_cal_data"
-
-#define MAG_RECEIVE_EVENT_SIZE(x) (((x) * 3) + 1)
 
 typedef struct magnetometer_chipset_funcs *(get_magnetometer_function_pointer)(char *);
 get_magnetometer_function_pointer *get_mag_funcs_ary[] = {
@@ -93,49 +75,6 @@ int set_mag_matrix(struct magnetometer_data *data)
 	return 0;
 }
 
-int set_mag_cover_matrix(struct magnetometer_data *data)
-{
-	int ret = 0;
-
-	if (!data->cover_matrix)
-		return 0;
-
-	shub_infof();
-
-	ret = shub_send_command(CMD_SETVALUE, SENSOR_TYPE_GEOMAGNETIC_FIELD, MAGNETIC_COVER_MATRIX,
-				(char *)data->cover_matrix, data->mag_matrix_len);
-	shub_infof("%u", data->position);
-
-	if (ret < 0) {
-		shub_errf("failed %d", ret);
-		return ret;
-	}
-
-	return 0;
-}
-
-int get_mag_sensor_value(char *dataframe, int *index, struct sensor_event *event, int frame_len)
-{
-	struct shub_sensor *sensor = get_sensor(SENSOR_TYPE_GEOMAGNETIC_FIELD);
-	struct mag_event *sensor_value = (struct mag_event *)event->value;
-
-	if (sensor->receive_event_size == sizeof(struct mag_event)) {
-		memcpy(sensor_value, dataframe + *index, sizeof(struct mag_event));
-		*index += sensor->receive_event_size;
-	} else {
-		s16 temp_mag_value[3];
-
-		memcpy(&temp_mag_value, dataframe + *index, sizeof(temp_mag_value));
-		*index += sizeof(temp_mag_value);
-		sensor_value->x = (s32) temp_mag_value[0];
-		sensor_value->y = (s32) temp_mag_value[1];
-		sensor_value->z = (s32) temp_mag_value[2];
-		memcpy(&sensor_value->accuracy, dataframe + *index, sizeof(sensor_value->accuracy));
-		*index += sizeof(sensor_value->accuracy);
-	}
-	return 0;
-}
-
 static int open_mag_calibration_file(void)
 {
 	int ret = 0;
@@ -166,14 +105,9 @@ static int save_mag_calibration_file(void)
 	return ret;
 }
 
-static int parsing_mag_calibration(char *dataframe, int *index, int frame_len)
+static int parsing_mag_calibration(char *dataframe, int *index)
 {
 	struct magnetometer_data *data = get_sensor(SENSOR_TYPE_GEOMAGNETIC_FIELD)->data;
-
-	if (*index + data->cal_data_len > frame_len) {
-		shub_errf("parssing error");
-		return -EINVAL;
-	}
 
 	shub_infof("Mag caldata received from MCU(%d)", data->cal_data_len);
 	memcpy(data->cal_data, dataframe + (*index), data->cal_data_len);
@@ -197,7 +131,7 @@ static int set_mag_cal(struct magnetometer_data *data)
 	return ret;
 }
 
-int init_magnetometer_chipset(void)
+int init_magnetometer_chipset(char *name, char *vendor)
 {
 	uint64_t i;
 	struct shub_sensor *sensor = get_sensor(SENSOR_TYPE_GEOMAGNETIC_FIELD);
@@ -209,8 +143,11 @@ int init_magnetometer_chipset(void)
 	if (data->chipset_funcs)
 		return 0;
 
-	for (i = 0; i < ARRAY_SIZE(get_mag_funcs_ary); i++) {
-		funcs = get_mag_funcs_ary[i](sensor->spec.name);
+	strcpy(sensor->chipset_name, name);
+	strcpy(sensor->vendor, vendor);
+
+	for (i = 0; i < ARRAY_LEN(get_mag_funcs_ary); i++) {
+		funcs = get_mag_funcs_ary[i](name);
 		if (funcs) {
 			data->chipset_funcs = funcs;
 			if (data->chipset_funcs->init)
@@ -220,7 +157,7 @@ int init_magnetometer_chipset(void)
 	}
 
 	if (!data->chipset_funcs) {
-		shub_errf("cannot find magnetometer sensor chipset");
+		shub_errf("cannot find magnetometer sensor chipset.");
 		return -EINVAL;
 	}
 
@@ -234,15 +171,10 @@ int init_magnetometer_chipset(void)
 		data->mag_matrix = kzalloc(data->mag_matrix_len, GFP_KERNEL);
 		if (!data->mag_matrix)
 			return -ENOMEM;
-
-		if (get_sensor(SENSOR_TYPE_FLIP_COVER_DETECTOR) && check_flip_cover_detector_supported()) {
-			data->cover_matrix = kzalloc(data->mag_matrix_len, GFP_KERNEL);
-			if (!data->cover_matrix)
-				return -ENOMEM;
-		}
 	}
 
 	parse_dt_magnetometer(get_shub_device());
+
 	return 0;
 }
 
@@ -266,9 +198,7 @@ static int sync_magnetometer_status(void)
 
 	ret = set_mag_cal(data);
 	if (ret < 0)
-		shub_errf("set_mag_cal failed");
-
-	set_mag_cover_matrix(data);
+		shub_errf("set_mag_cal failed\n");
 
 	return ret;
 }
@@ -294,15 +224,8 @@ int init_magnetometer(bool en)
 	if (en) {
 		strcpy(sensor->name, "geomagnetic_sensor");
 		sensor->report_mode_continuous = true;
-
-		if (sensor->spec.version >= MAG_EVENT_SIZE_4BYTE_VERSION)
-			sensor->receive_event_size = MAG_RECEIVE_EVENT_SIZE(sizeof(s32));
-		else
-			sensor->receive_event_size = MAG_RECEIVE_EVENT_SIZE(sizeof(s16));
-
-		shub_infof("receive_event_size : %d", sensor->receive_event_size);
-
-		sensor->report_event_size = sizeof(struct mag_event);
+		sensor->receive_event_size = 7;
+		sensor->report_event_size = 7;
 		sensor->event_buffer.value = kzalloc(sizeof(struct mag_event), GFP_KERNEL);
 		if (!sensor->event_buffer.value)
 			goto err_no_mem;
@@ -322,7 +245,6 @@ int init_magnetometer(bool en)
 		sensor->funcs->parsing_data = parsing_mag_calibration;
 		sensor->funcs->init_chipset = init_magnetometer_chipset;
 		sensor->funcs->open_calibration_file = open_mag_calibration_file;
-		sensor->funcs->get_sensor_value = get_mag_sensor_value;
 	} else {
 		struct magnetometer_data *data = get_sensor(SENSOR_TYPE_GEOMAGNETIC_FIELD)->data;
 
@@ -331,9 +253,6 @@ int init_magnetometer(bool en)
 
 		kfree(data->mag_matrix);
 		data->mag_matrix = NULL;
-
-		kfree(data->cover_matrix);
-		data->cover_matrix = NULL;
 
 		kfree(sensor->data);
 		sensor->data = NULL;
@@ -369,9 +288,9 @@ int init_magnetometer_power(bool en)
 
 	if (en) {
 		strcpy(sensor->name, "geomagnetic_power");
-		sensor->receive_event_size = sizeof(struct mag_power_event);
-		sensor->report_event_size = sizeof(struct mag_power_event);
-		sensor->event_buffer.value = kzalloc(sizeof(struct mag_power_event), GFP_KERNEL);
+		sensor->receive_event_size = 6;
+		sensor->report_event_size = 6;
+		sensor->event_buffer.value = kzalloc(sizeof(struct mag_event), GFP_KERNEL);
 		if (!sensor->event_buffer.value)
 			goto err_no_mem;
 

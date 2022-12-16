@@ -375,7 +375,7 @@ static uint64_t test_sqrt(uint64_t in)
 	int32_t count = 30;
 	uint64_t out = 1;
 
-	while (count-- > 0)
+	for (count; count > 0; --count)
 		out = (out + in / out) / 2;
 
 	return out;
@@ -402,7 +402,6 @@ static void report_test_result(void)
 		struct sensor_debug_factor op[OPERATION_MAX];
 	} __attribute__((__packed__));
 
-	int32_t ret = 0;
 	int32_t i = 0;
 	int32_t type = 0;
 	int32_t count = 0;
@@ -435,9 +434,9 @@ static void report_test_result(void)
 	}
 
 	shub_infof("[SSC] == system test result ======");
-	ret = shub_send_command_wait(CMD_GETVALUE, TYPE_MCU, HUB_SYSTEM_CHECK,
+	shub_send_command_wait(CMD_GETVALUE, TYPE_MCU, HUB_SYSTEM_CHECK,
 			       1000, NULL, 0, (char **)&buffer, &buffer_length, true);
-	if (ret < 0 || !buffer || buffer_length == 0) {
+	if (!buffer || buffer_length == 0) {
 		shub_infof("[SSC] ERROR! Fail to get system test result!!");
 		return;
 	}
@@ -508,13 +507,20 @@ void system_ready_cb(void)
 
 static void prepare_test_env(void)
 {
-	int32_t type = 0;
+	int32_t idx = 0, type = 0;
+	char *buf = kzalloc(4096, GFP_KERNEL);
+	int spec_size = get_sensor_spec(buf);
+	struct sensor_spec_t *spec = (struct sensor_spec_t *)buf;
+	int32_t spec_count = spec_size / sizeof(struct sensor_spec_t);
 	struct shub_sensor *sensor;
 
 	shub_infof("");
 	// init check_system data
 	memset(&ssc, 0, sizeof(ssc));
-
+	for (idx = 0; idx < spec_count; idx++) {
+		type = spec[idx].uid;
+		ssc.sensor[type].expected_delay_ns = spec[idx].min_delay * 1000;
+	}
 	// backup shub env
 	ssc.env_backup.pre_sensor_state = get_sensors_legacy_enable_state();
 	for (type = SENSOR_TYPE_ACCELEROMETER; type < SENSOR_TYPE_LEGACY_MAX; type++) {
@@ -528,9 +534,10 @@ static void prepare_test_env(void)
 
 			ssc.env_backup.pre_rate[type].sampling_ms = sensor->sampling_period;
 			ssc.env_backup.pre_rate[type].report_ms = sensor->max_report_latency;
-			ssc.sensor[type].expected_delay_ns = sensor->spec.min_delay * 1000;
 		}
 	}
+
+	kfree(buf);
 }
 
 void sensorhub_system_check(uint32_t test_delay_us, uint32_t test_count)

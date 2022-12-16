@@ -12,7 +12,6 @@
  *  GNU General Public License for more details.
  *
  */
-
 #include <linux/iio/iio.h>
 #include <linux/iio/buffer.h>
 #include <linux/iio/buffer_impl.h>
@@ -22,7 +21,6 @@
 #include <linux/slab.h>
 #include <linux/version.h>
 
-#include "../sensorhub/shub_device.h"
 #include "../utility/shub_utility.h"
 #include "../sensormanager/shub_sensor_type.h"
 #include "../sensormanager/shub_sensor.h"
@@ -33,7 +31,7 @@
 #define SCONTEXT_HEADER_LEN     8
 
 #define IIO_CHANNEL            -1
-#define IIO_SCAN_INDEX          0
+#define IIO_SCAN_INDEX          3
 #define IIO_SIGN               's'
 #define IIO_SHIFT               0
 
@@ -63,27 +61,24 @@ static int shub_predisable(struct iio_dev *indio_dev)
 	return 0;
 }
 
-static const struct iio_buffer_setup_ops shub_iio_buffer_setup_ops = {
+static const struct iio_buffer_setup_ops shub_iio_ring_setup_ops = {
 	.preenable = &shub_preenable,
 	.predisable = &shub_predisable,
 };
 
-static int shub_iio_configure_buffer(struct iio_dev *indio_dev, int bytes)
+static int shub_iio_configure_ring(struct iio_dev *indio_dev, int bytes)
 {
-	struct iio_buffer *buffer;
+	struct iio_buffer *ring;
 
-	buffer = shub_iio_kfifo_allocate();
-	if (!buffer)
+	ring = shub_iio_kfifo_allocate();
+	if (!ring) {
 		return -ENOMEM;
+	}
 
-	buffer->scan_timestamp = true;
-	buffer->bytes_per_datum = bytes;
-	buffer->scan_mask = bitmap_zalloc(1, GFP_KERNEL);
-	set_bit(0, buffer->scan_mask);
-
-	iio_device_attach_buffer(indio_dev, buffer);
-
-	indio_dev->setup_ops = &shub_iio_buffer_setup_ops;
+	ring->scan_timestamp = true;
+	ring->bytes_per_datum = bytes;
+	indio_dev->buffer = ring;
+	indio_dev->setup_ops = &shub_iio_ring_setup_ops;
 	indio_dev->modes |= INDIO_BUFFER_SOFTWARE;
 
 	return 0;
@@ -95,13 +90,10 @@ static void *init_indio_device(struct device *dev, const struct iio_info *info,
 	struct iio_dev *indio_dev;
 	int ret = 0;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0))
-	indio_dev = iio_device_alloc(dev, sizeof(*dev));
-#else
 	indio_dev = iio_device_alloc(0);
-#endif
-	if (!indio_dev)
+	if (!indio_dev) {
 		goto err_alloc;
+	}
 
 	indio_dev->name = device_name;
 	indio_dev->dev.parent = dev;
@@ -114,7 +106,7 @@ static void *init_indio_device(struct device *dev, const struct iio_info *info,
 	indio_dev->modes = INDIO_DIRECT_MODE;
 	indio_dev->currentmode = INDIO_DIRECT_MODE;
 
-	ret = shub_iio_configure_buffer(indio_dev, bytes);
+	ret = shub_iio_configure_ring(indio_dev, bytes);
 	if (ret) {
 		goto err_config_ring;
 	}
@@ -145,7 +137,7 @@ static const struct iio_info indio_info = {
 static const struct iio_info indio_info;
 #endif
 
-void remove_indio_dev(void)
+void remove_indio_dev()
 {
 	int i;
 

@@ -77,9 +77,8 @@ struct rules_file_struct {
 	int flags;
 };
 
-static const struct rules_file_struct rules_files[4] = {
+static const struct rules_file_struct rules_files[3] = {
 	{ "/dpolicy",			LOAD_FLAG_DPOLICY },
-	{ "/first_stage_ramdisk/dpolicy", LOAD_FLAG_DPOLICY },
 	{ "/vendor/etc/dpolicy",	LOAD_FLAG_DPOLICY },
 	{ "/dpolicy_system",		LOAD_FLAG_DPOLICY_SYSTEM }
 };

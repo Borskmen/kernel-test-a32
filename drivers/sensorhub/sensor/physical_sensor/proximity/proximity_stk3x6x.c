@@ -1,18 +1,3 @@
-/*
- *  Copyright (C) 2020, Samsung Electronics Co. Ltd. All Rights Reserved.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- */
-
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/of_gpio.h>
@@ -69,7 +54,7 @@ void set_proximity_stk3x6x_threshold_mode(u8 mode)
 	prox_thresh_mode = mode;
 }
 
-int proximity_open_calibration_stk3x6x(void)
+int proximity_open_calibration(void)
 {
 	int ret = 0;
 	struct proximity_data *data = get_sensor(SENSOR_TYPE_PROXIMITY)->data;
@@ -126,7 +111,7 @@ void pre_report_event_proximity_stk3x6x(void)
 	struct proximity_data *data = get_sensor(SENSOR_TYPE_PROXIMITY)->data;
 
 	save_prox_cal_threshold_data(data);
-	proximity_open_calibration_stk3x6x();
+	proximity_open_calibration();
 }
 
 int init_proximity_stk3x6x(struct proximity_data *data)
@@ -147,7 +132,7 @@ struct proximity_chipset_funcs prox_stk3x6x_ops = {
 	.set_proximity_threshold_mode = set_proximity_stk3x6x_threshold_mode,
 	.pre_report_event_proximity = pre_report_event_proximity_stk3x6x,
 	.parse_dt = parse_dt_proximity_stk3x6x,
-	.open_calibration_file = proximity_open_calibration_stk3x6x,
+	.open_calibration_file = proximity_open_calibration,
 };
 
 struct proximity_chipset_funcs *get_proximity_stk3x6x_function_pointer(char *name)

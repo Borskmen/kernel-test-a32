@@ -268,18 +268,10 @@ static void filter_by_wcg(struct drm_device *dev,
 
 static bool can_be_compress(uint32_t format)
 {
-#if defined(CONFIG_MACH_MT6873) || defined(CONFIG_MACH_MT6853) || \
-	defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6833) || \
-	defined(CONFIG_MACH_MT6781)
-	if (mtk_is_yuv(format))
+	if (mtk_is_yuv(format) || format == DRM_FORMAT_RGB565)
 		return 0;
-#else
-	if (mtk_is_yuv(format) || format == DRM_FORMAT_RGB565 ||
-	    format == DRM_FORMAT_BGR565)
-		return 0;
-#endif
-
-	return 1;
+	else
+		return 1;
 }
 
 static void filter_by_fbdc(struct drm_mtk_layering_info *disp_info)
@@ -431,8 +423,7 @@ static uint16_t get_mapping_table(struct drm_device *dev, int disp_idx,
 			tmp_map = layer_mapping_table[addon_data->hrt_type];
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_VDS_PATH_SWITCH) &&
-				priv->need_vds_path_switch &&
-				(disp_idx == HRT_PRIMARY))
+				priv->need_vds_path_switch)
 				tmp_map = layer_mapping_table_vds_switch[
 					addon_data->hrt_type];
 
@@ -523,11 +514,7 @@ unsigned long long _layering_get_frame_bw(struct drm_crtc *crtc,
 
 	bw_base = (unsigned long long)width * height * fps * 125 * 4;
 
-#if BITS_PER_LONG == 32
-	do_div(bw_base, 100 * 1024 * 1024);
-#else
 	bw_base /= 100 * 1024 * 1024;
-#endif
 
 	return bw_base;
 }
@@ -557,11 +544,7 @@ static int layering_get_valid_hrt(struct drm_crtc *crtc,
 		DDPPR_ERR("Get frame hrt bw by datarate is zero\n");
 		return 600;
 	}
-#if BITS_PER_LONG == 32
-	do_div(dvfs_bw, tmp * 100);
-#else
 	dvfs_bw /= tmp * 100;
-#endif
 
 	/* error handling when requested BW is less than 2 layers */
 	if (dvfs_bw < 200) {

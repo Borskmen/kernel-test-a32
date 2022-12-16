@@ -33,9 +33,6 @@
 #include "vpubuf-dma-contig.h"
 #include "vpu_cmn.h"
 
-#define VPU_ANY_ADDR                   0xFFFFFFFF
-#define VPU_MIN_LOCAL_ADDR             1024
-
 DECLARE_VLIST(vpu_kbuffer);
 DECLARE_VLIST(vpu_dbg_buf);
 
@@ -244,22 +241,11 @@ int vbuf_std_alloc(struct vpu_device *vpu_device, struct vbuf_alloc *alloc_ctx)
 			return ret;
 		}
 
-		ret = idr_alloc(&vpu_device->addr_idr, vpub,
-				VPU_MIN_LOCAL_ADDR, VPU_ANY_ADDR - 1,
-				GFP_KERNEL);
-		if (ret < 0) {
-			LOG_ERR("failed idr_alloc\n");
-			__vpu_buf_mmap_free(vpub);
-			kfree(vpub);
-			mutex_unlock(&mng->buf_mutex);
-			return ret;
-		}
-
 		list_add_tail(vlist_link(vpub, struct vpu_kbuffer),
 			      &mng->buf_list);
 		mng->buf_num++;
 
-		alloc_ctx->handle = ret;
+		alloc_ctx->handle = (u64)(uintptr_t)vpub;
 		alloc_ctx->buf_size = vpub->length;
 		alloc_ctx->iova_addr = vpub->dma_addr;
 		alloc_ctx->iova_size = PAGE_ALIGN(vpub->length);
@@ -325,22 +311,11 @@ int vbuf_std_alloc(struct vpu_device *vpu_device, struct vbuf_alloc *alloc_ctx)
 			return -EINVAL;
 		}
 
-		ret = idr_alloc(&vpu_device->addr_idr, vpub,
-				VPU_MIN_LOCAL_ADDR, VPU_ANY_ADDR - 1,
-				GFP_KERNEL);
-		if (ret < 0) {
-			LOG_ERR("failed idr_alloc\n");
-			__vpu_buf_dmabuf_put(vpub);
-			kfree(vpub);
-			mutex_unlock(&mng->buf_mutex);
-			return ret;
-		}
-
 		list_add_tail(vlist_link(vpub, struct vpu_kbuffer),
 			      &mng->buf_list);
 		mng->buf_num++;
 
-		alloc_ctx->handle = ret;
+		alloc_ctx->handle = (u64)(uintptr_t)vpub;
 		alloc_ctx->buf_size = vpub->length;
 		alloc_ctx->iova_addr = vpub->dma_addr;
 		alloc_ctx->iova_size = vpub->length;
@@ -373,7 +348,6 @@ int vbuf_std_free(struct vpu_device *vpu_device, struct vbuf_free *free_ctx)
 {
 	struct vpu_manage *mng;
 	struct vpu_kbuffer *vpub;
-	int idr_id;
 
 	if (vpu_device->vbuf_mng == NULL) {
 		LOG_ERR("vbuf_std_init not ready\n");
@@ -383,15 +357,7 @@ int vbuf_std_free(struct vpu_device *vpu_device, struct vbuf_free *free_ctx)
 
 	mutex_lock(&mng->buf_mutex);
 
-	idr_id = (int)free_ctx->handle;
-	vpub = idr_find(&vpu_device->addr_idr, idr_id);
-	if (vpub == NULL) {
-		LOG_ERR("idr_find fail\n");
-		mutex_unlock(&mng->buf_mutex);
-		return -EINVAL;
-	}
-	idr_remove(&vpu_device->addr_idr, idr_id);
-
+	vpub = (struct vpu_kbuffer *)(uintptr_t)free_ctx->handle;
 	if (!vpu_check_buf_handle(vpu_device, vpub)) {
 		LOG_ERR("%s fail, vpu_kbuffer is invalid\n", __func__);
 		mutex_unlock(&mng->buf_mutex);
@@ -420,7 +386,6 @@ int vbuf_std_sync(struct vpu_device *vpu_device, struct vbuf_sync *sync_ctx)
 {
 	struct vpu_manage *mng;
 	struct vpu_kbuffer *vpub;
-	int idr_id;
 
 	if (vpu_device->vbuf_mng == NULL) {
 		LOG_ERR("vbuf_std_init not ready\n");
@@ -430,14 +395,7 @@ int vbuf_std_sync(struct vpu_device *vpu_device, struct vbuf_sync *sync_ctx)
 
 	mutex_lock(&mng->buf_mutex);
 
-	idr_id = (int)sync_ctx->handle;
-	vpub = idr_find(&vpu_device->addr_idr, idr_id);
-	if (vpub == NULL) {
-		LOG_ERR("idr_find fail\n");
-		mutex_unlock(&mng->buf_mutex);
-		return -EINVAL;
-	}
-
+	vpub = (struct vpu_kbuffer *)(uintptr_t)sync_ctx->handle;
 	if (!vpu_check_buf_handle(vpu_device, vpub)) {
 		LOG_ERR("%s fail, vpu_kbuffer is invalid\n", __func__);
 		mutex_unlock(&mng->buf_mutex);

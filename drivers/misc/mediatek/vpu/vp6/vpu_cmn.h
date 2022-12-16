@@ -195,7 +195,6 @@ struct vpu_device {
 
 	/* algo binary data */
 	struct vpu_shared_memory *algo_binary_data;
-	struct idr addr_idr;
 };
 
 struct vpu_user {
@@ -648,7 +647,7 @@ int vpu_dump_device_dbg(struct seq_file *s, struct vpu_device *gvpu_device);
  * @args:       the pointer of arryf of arguments
  */
 int vpu_set_power_parameter(struct vpu_device *vpu_device, uint8_t param,
-				int argc, unsigned int *args);
+				int argc, int *args);
 
 /**
  * vpu_hw_boot_sequence - do booting sequence

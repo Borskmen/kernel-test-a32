@@ -158,9 +158,6 @@ struct iwcCmdqAddrMetadata_t {
 	uint32_t offset;	/* [IN]_b, buffser offset to secure handle */
 	uint32_t size;		/* buffer size */
 	uint32_t port;		/* hw port id (i.e. M4U port id)*/
-	uint32_t sec_id;
-	uint32_t useSecIdinMeta;
-	int32_t ionFd;
 };
 
 struct iwcCmdqDebugConfig_t {
@@ -183,6 +180,9 @@ struct iwcCmdqMetadata_t {
 
 	uint64_t enginesNeedDAPC;
 	uint64_t enginesNeedPortSecurity;
+
+	uint64_t enginesDisablePortSecurity;
+	uint64_t enginesDisableDAPC;
 };
 
 struct iwcCmdqPathResource_t {
@@ -281,7 +281,6 @@ struct iwcCmdqCommand_t {
 	uint32_t mdp_extension;
 	struct readback_engine readback_engs[CMDQ_MAX_READBACK_ENG];
 	uint32_t readback_cnt;
-	int32_t sec_id;
 
 };
 

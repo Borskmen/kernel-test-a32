@@ -55,7 +55,6 @@ enum SCP_NOTIFY_EVENT {
 #define SCP_A_ENABLE		0x10
 #define SCP_A_REBOOT		0x11
 
-#define SCP_SEMA_AUDIOREG (-1)
 
 /* scp semaphore definition*/
 enum SEMAPHORE_FLAG {
@@ -124,7 +123,9 @@ enum scp_reserve_mem_id_t {
 	SPK_PROTECT_MEM_ID,
 	SPK_PROTECT_DUMP_MEM_ID,
 #endif
+#ifdef CONFIG_MTK_VOW_BARGE_IN_SUPPORT
 	VOW_BARGEIN_MEM_ID,
+#endif
 #ifdef SCP_PARAMS_TO_SCP_SUPPORT
 	SCP_DRV_PARAMS_MEM_ID,
 #endif

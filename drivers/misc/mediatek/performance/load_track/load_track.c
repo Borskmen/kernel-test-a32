@@ -18,14 +18,12 @@
 #include <linux/list.h>
 #include <linux/slab.h>
 #include <linux/cpufreq.h>
-#include <linux/cpumask.h>
 
 #define TAG "[LT]"
 
 struct LT_USER_DATA {
-	void (*fn)(int loading, int mask_loading);
+	void (*fn)(int loading);
 	unsigned long polling_ms;
-	const struct cpumask *cpu_mask;
 	u64 *prev_idle_time;
 	u64 *prev_wall_time;
 	struct hlist_node user_list_node;
@@ -84,35 +82,6 @@ static inline void free_lt_work(struct LT_WORK_DATA *lt_work)
 	kfree(lt_work);
 }
 
-static int lt_update_mask_loading(struct LT_USER_DATA *lt_data)
-{
-	int ret = -EOVERFLOW;
-	int cpu;
-	u64 cur_idle_time_i, cur_wall_time_i;
-	u64 cpu_idle_time = 0, cpu_wall_time = 0;
-
-	lt_lockprove(__func__);
-
-	if (cpumask_equal(cpu_possible_mask, lt_data->cpu_mask))
-		return -ENODATA;
-
-	for_each_possible_cpu(cpu) {
-		if (cpumask_test_cpu(cpu, lt_data->cpu_mask)) {
-			cur_idle_time_i = get_cpu_idle_time(cpu, &cur_wall_time_i, 1);
-			if (!cpu_isolated(cpu)) {
-				cpu_idle_time += cur_idle_time_i - lt_data->prev_idle_time[cpu];
-				cpu_wall_time += cur_wall_time_i - lt_data->prev_wall_time[cpu];
-			}
-		}
-	}
-
-	if (cpu_wall_time > 0 && cpu_wall_time >= cpu_idle_time)
-		ret =
-			div_u64((cpu_wall_time - cpu_idle_time) * 100,
-				cpu_wall_time);
-	return ret;
-}
-
 static int lt_update_loading(struct LT_USER_DATA *lt_data)
 {
 	int ret = -EOVERFLOW;
@@ -123,10 +92,8 @@ static int lt_update_loading(struct LT_USER_DATA *lt_data)
 	lt_lockprove(__func__);
 	for_each_possible_cpu(cpu) {
 		cur_idle_time_i = get_cpu_idle_time(cpu, &cur_wall_time_i, 1);
-		if (!cpu_isolated(cpu)) {
-			cpu_idle_time += cur_idle_time_i - lt_data->prev_idle_time[cpu];
-			cpu_wall_time += cur_wall_time_i - lt_data->prev_wall_time[cpu];
-		}
+		cpu_idle_time += cur_idle_time_i - lt_data->prev_idle_time[cpu];
+		cpu_wall_time += cur_wall_time_i - lt_data->prev_wall_time[cpu];
 		lt_data->prev_idle_time[cpu] = cur_idle_time_i;
 		lt_data->prev_wall_time[cpu] = cur_wall_time_i;
 	}
@@ -151,7 +118,7 @@ static void lt_work_fn(struct work_struct *ps_work)
 	lt_work = container_of(dwork, struct LT_WORK_DATA, s_work);
 	lt_user = lt_work->link2user;
 	if (lt_user) {
-		lt_user->fn(lt_update_mask_loading(lt_user), lt_update_loading(lt_user));
+		lt_user->fn(lt_update_loading(lt_user));
 
 		ktime_now = ktime_get();
 		do {
@@ -169,8 +136,8 @@ static void lt_work_fn(struct work_struct *ps_work)
 	lt_unlock(__func__);
 }
 
-static void *new_lt_user(void (*fn)(int loading, int mask_loading),
-	unsigned long polling_ms, const struct cpumask *cpu_mask)
+static void *new_lt_user(void (*fn)(int loading),
+	unsigned long polling_ms)
 {
 	struct LT_USER_DATA *new_lt;
 	int cpu;
@@ -182,7 +149,6 @@ static void *new_lt_user(void (*fn)(int loading, int mask_loading),
 
 	new_lt->fn             = fn;
 	new_lt->polling_ms     = polling_ms;
-	new_lt->cpu_mask       = cpu_mask;
 	new_lt->prev_idle_time =
 		kcalloc(nr_cpus, sizeof(u64), GFP_KERNEL);
 	if (!new_lt->prev_idle_time)
@@ -233,8 +199,8 @@ static void lt_cleanup(void)
 	lt_unlock(__func__);
 }
 
-int reg_loading_tracking_sp(void (*fn)(int loading, int mask_loading), unsigned long polling_ms,
-	const struct cpumask *cpu_mask, const char *caller)
+int reg_loading_tracking_sp(void (*fn)(int loading), unsigned long polling_ms,
+	const char *caller)
 {
 	struct LT_USER_DATA *ltiter = NULL, *new_user;
 	struct LT_WORK_DATA *new_work;
@@ -257,7 +223,7 @@ int reg_loading_tracking_sp(void (*fn)(int loading, int mask_loading), unsigned 
 		goto reg_loading_tracking_out;
 	}
 
-	new_user = new_lt_user(fn, polling_ms, cpu_mask);
+	new_user = new_lt_user(fn, polling_ms);
 	if (!new_user) {
 		ret = -ENOMEM;
 		goto reg_loading_tracking_out;
@@ -285,7 +251,7 @@ reg_loading_tracking_out:
 }
 
 
-int unreg_loading_tracking_sp(void (*fn)(int loading, int mask_loading), const char *caller)
+int unreg_loading_tracking_sp(void (*fn)(int loading), const char *caller)
 {
 	struct LT_USER_DATA *ltiter = NULL;
 	int ret = 0;

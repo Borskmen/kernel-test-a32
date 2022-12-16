@@ -147,23 +147,6 @@ static int regulator_oc_notify(struct notifier_block *nb, unsigned long event,
 		PMIC_OC_DEBUG_DUMP(MT6359_LDO_VIO18_OP_CFG);
 		PMIC_OC_DEBUG_DUMP(MT6359_VIO18_ANA_CON0);
 		PMIC_OC_DEBUG_DUMP(MT6359_VIO18_ANA_CON1);
-#if defined(CONFIG_MACH_MT6853) && defined(CONFIG_REGULATOR_MT6315)
-		return NOTIFY_OK;
-#elif defined(CONFIG_MACH_MT6833)
-		return NOTIFY_OK;
-#endif /* MTK_5G_B_MT6360_MT6315 */
-	} else if (!strcmp(reg_oc_dbg->name, "va09")) {
-		PMIC_OC_DEBUG_DUMP(MT6359_LDO_TOP_INT_CON0);
-		PMIC_OC_DEBUG_DUMP(MT6359_LDO_TOP_INT_MASK_CON0);
-		PMIC_OC_DEBUG_DUMP(MT6359_LDO_TOP_INT_STATUS0);
-		PMIC_OC_DEBUG_DUMP(MT6359_LDO_TOP_INT_RAW_STATUS0);
-		PMIC_OC_DEBUG_DUMP(MT6359_LDO_VA09_CON0);
-		PMIC_OC_DEBUG_DUMP(MT6359_LDO_VA09_CON1);
-		PMIC_OC_DEBUG_DUMP(MT6359_LDO_VA09_MON);
-		PMIC_OC_DEBUG_DUMP(MT6359_LDO_VA09_OP_EN);
-		PMIC_OC_DEBUG_DUMP(MT6359_LDO_VA09_OP_CFG);
-		PMIC_OC_DEBUG_DUMP(MT6359_VA09_ANA_CON0);
-		PMIC_OC_DEBUG_DUMP(MT6359_VRF18_ELR_3);
 	} else if (!strcmp(reg_oc_dbg->name, "vusb")) {
 		/* case results from mechanism design */
 		return NOTIFY_OK;
@@ -174,7 +157,7 @@ static int regulator_oc_notify(struct notifier_block *nb, unsigned long event,
 				   "\nCRDISPATCH_KEY:MD OC\nOC Interrupt: %s",
 				   reg_oc_dbg->name);
 		md_reg_oc_notify(reg_oc_dbg);
-	} else if (reg_oc_dbg->times == NOTIFY_TIMES_MAX) {
+	} else {
 		aee_kernel_warning(oc_str,
 				   "\nCRDISPATCH_KEY:PMIC OC\nOC Interrupt: %s",
 				   reg_oc_dbg->name);

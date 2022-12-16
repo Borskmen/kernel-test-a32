@@ -16,7 +16,6 @@
 #include "kree/mem.h"
 #include "tz_m4u.h"
 #include "trustzone/kree/system.h"
-#include <linux/mutex.h>
 
 struct m4u_sec_ty_context {
 	KREE_SESSION_HANDLE mem_sn;	/*for mem service */

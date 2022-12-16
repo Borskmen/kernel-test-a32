@@ -20,7 +20,6 @@
 #include "../../sensormanager/shub_sensor_manager.h"
 #include "../../utility/shub_dev_core.h"
 #include "../../utility/shub_utility.h"
-#include "../../utility/shub_file_manager.h"
 #include "light_factory.h"
 
 #include <linux/device.h>
@@ -39,17 +38,14 @@ static ssize_t name_show(struct device *dev, struct device_attribute *attr, char
 {
 	struct shub_sensor *sensor = get_sensor(SENSOR_TYPE_LIGHT);
 
-	return sprintf(buf, "%s\n", sensor->spec.name);
+	return sprintf(buf, "%s\n", sensor->chipset_name);
 }
 
 static ssize_t vendor_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct shub_sensor *sensor = get_sensor(SENSOR_TYPE_LIGHT);
-	char vendor[VENDOR_MAX] = "";
 
-	get_sensor_vendor_name(sensor->spec.vendor, vendor);
-
-	return sprintf(buf, "%s\n", vendor);
+	return sprintf(buf, "%s\n", sensor->vendor);
 }
 
 static ssize_t lux_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -250,84 +246,6 @@ retry:
 			copr[10], copr[11]);
 }
 
-#define LIGHT_CALIBRATION_FILE_PATH "/efs/FactoryApp/light_cal_data"
-static ssize_t light_cal_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	char cal_data[7];
-	int ret;
-	u8 cal = 0;
-	u16 max = 0;
-	u32 lux = 0;
-
-	ret = shub_file_read(LIGHT_CALIBRATION_FILE_PATH, cal_data, sizeof(cal_data), 0);
-	if (ret != sizeof(cal_data)) {
-		ret = -EIO;
-		shub_errf("Can't read calibration file %d", ret);
-	} else {
-		cal = cal_data[0];
-		memcpy(&max, &cal_data[1], sizeof(max));
-		memcpy(&lux, &cal_data[3], sizeof(lux));
-	}
-
-	return snprintf(buf, PAGE_SIZE, "%u, %u, %u\n", cal, max, lux);
-}
-
-
-static ssize_t light_cal_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
-{
-	int ret = 0;
-	bool init, update, file_write = false;
-	char cal_data[7];
-
-	if (!get_sensor_probe_state(SENSOR_TYPE_LIGHT))
-		return -ENOENT;
-	if (!buf)
-		return -EINVAL;
-
-	init = sysfs_streq(buf, "0");
-	update = sysfs_streq(buf, "1");
-
-	if (init) {
-		char send_buf = 1;
-
-		ret = shub_send_command(CMD_SETVALUE, SENSOR_TYPE_LIGHT, SENSOR_FACTORY, &send_buf, sizeof(send_buf));
-		if (ret < 0) {
-			shub_errf("CMD fail %d", ret);
-			return ret;
-		}
-
-		memset(cal_data, 0, sizeof(cal_data));
-		file_write = true;
-	} else if (update) {
-		char *buffer = NULL;
-		int buffer_length = 0;
-		int ret = 0;
-
-		ret = shub_send_command_wait(CMD_GETVALUE, SENSOR_TYPE_LIGHT, CAL_DATA, 1000, NULL, 0, &buffer,
-					     &buffer_length, false);
-		if (ret < 0) {
-			shub_errf("CMD fail %d", ret);
-			return ret;
-		}
-
-		if (buffer_length == sizeof(cal_data)) {
-			memcpy(cal_data, buffer, sizeof(cal_data));
-
-			file_write = true;
-		}
-	} else {
-		shub_errf("buf data is wrong %s", buf);
-	}
-
-	if (file_write) {
-		ret = shub_file_write_no_wait(LIGHT_CALIBRATION_FILE_PATH, cal_data, sizeof(cal_data), 0);
-		if (ret != sizeof(cal_data))
-			shub_errf("Can't write light cal to file");
-	}
-
-	return size;
-}
-
 static DEVICE_ATTR_RO(name);
 static DEVICE_ATTR_RO(vendor);
 static DEVICE_ATTR_RO(lux);
@@ -338,7 +256,6 @@ static DEVICE_ATTR(hall_ic, 0220, NULL, hall_ic_store);
 static DEVICE_ATTR_RO(sensorhub_ddi_spi_check);
 static DEVICE_ATTR_RO(test_copr);
 static DEVICE_ATTR_RO(copr_roix);
-static DEVICE_ATTR_RW(light_cal);
 
 static struct device_attribute *light_attrs[] = {
 	&dev_attr_name,
@@ -346,7 +263,6 @@ static struct device_attribute *light_attrs[] = {
 	&dev_attr_lux,
 	&dev_attr_raw_data,
 	&dev_attr_hall_ic,
-	&dev_attr_light_cal,
 	NULL,
 	NULL,
 	NULL,
@@ -370,7 +286,7 @@ static void check_light_dev_attr(void)
 	while (light_attrs[index] != NULL)
 		index++;
 
-	if (!of_property_read_u32_array(np, "light-position", light_position, ARRAY_SIZE(light_position))) {
+	if (!of_property_read_u32_array(np, "light-position", light_position, ARRAY_LEN(light_position))) {
 		if (index < ARRAY_SIZE(light_attrs))
 			light_attrs[index++] = &dev_attr_light_circle;
 		shub_info("light-position - %u.%u %u.%u %u.%u", light_position[0], light_position[1],
@@ -408,7 +324,7 @@ void initialize_light_sysfs(void)
 	}
 
 	for (i = 0; i < ARRAY_SIZE(get_light_chipset_dev_attrs); i++) {
-		chipset_attrs = get_light_chipset_dev_attrs[i](sensor->spec.name);
+		chipset_attrs = get_light_chipset_dev_attrs[i](sensor->chipset_name);
 		if (chipset_attrs) {
 			ret = add_sensor_device_attr(light_sysfs_device, chipset_attrs);
 			if (ret < 0) {

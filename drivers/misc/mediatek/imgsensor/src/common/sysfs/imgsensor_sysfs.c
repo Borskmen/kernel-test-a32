@@ -115,10 +115,10 @@ static const char * const g_cal_data_name_by_postion[SENSOR_POSITION_MAX] = {
 };
 
 #define IS_COMMON_CAL(position) (finfo[position]->header_ver[3] == ISP_VENDOR_COMMON)
-
+#if defined(REAR_SUB_CAMERA)
 #define SetMultiCal_Size 2060
 static const char *SetMultiCal_Path = "/vendor/etc/SetMultiCal.bin";
-
+#endif
 bool check_isp_vendor(int position, char *header_ver)
 {
 	switch (header_ver[3]) {
@@ -139,6 +139,7 @@ bool check_isp_vendor(int position, char *header_ver)
 		return false;
 	}
 }
+#if defined(REAR_SUB_CAMERA)
 static int read_file(const char *path, unsigned char *data, unsigned int size)
 {
 	int fd, ret;
@@ -171,7 +172,7 @@ static int SetMultiCal_read(unsigned char *data)
 		pr_info("%s: read file %s, size %d", __func__, SetMultiCal_Path, SetMultiCal_Size);
 	return ret;
 }
-
+#endif
 bool imgsensor_sec_check_rom_ver(int sub_deviceIdx)
 {
 	if (!specific) {
@@ -594,7 +595,8 @@ static ssize_t camera_sensorid_exif_show(int position, char *buf)
 	if(!imgsensor_sec_check_rom_ver(position)) {
 		return -ENODEV;
 	}
-	return sprintf(buf, "%s\n", finfo[position]->rom_sensor_id);
+	memcpy(buf, finfo[position]->rom_sensor_id, IMGSENSOR_SENSOR_ID_SIZE);
+	return IMGSENSOR_SENSOR_ID_SIZE;
 }
 
 static ssize_t camera_mtf_exif_show(int position, char *buf)
@@ -1843,13 +1845,15 @@ static DEVICE_ATTR(rear3_sensorid_exif, S_IRUGO, camera_rear3_sensorid_exif_show
 #if defined(REAR_SUB_CAMERA)
 static DEVICE_ATTR(rear3_dualcal, S_IRUGO, camera_rear3_dualcal_show, NULL);
 static DEVICE_ATTR(rear3_dualcal_size, S_IRUGO, camera_rear3_dualcal_size_show, NULL);
-static DEVICE_ATTR(rear3_tilt, S_IRUGO, camera_rear3_tilt_show, NULL);
 #endif
 static DEVICE_ATTR(rear3_camfw, S_IRUGO, camera_rear3_camfw_show, NULL);
 static DEVICE_ATTR(rear3_camfw_full, S_IRUGO, camera_rear3_camfw_full_show, NULL);
 static DEVICE_ATTR(rear3_checkfw_user, S_IRUGO, camera_rear3_checkfw_user_show, NULL);
 static DEVICE_ATTR(rear3_checkfw_factory, S_IRUGO, camera_rear3_checkfw_factory_show, NULL);
 static DEVICE_ATTR(rear3_camtype, S_IRUGO, camera_rear3_camtype_show, NULL);
+#if defined(REAR_SUB_CAMERA)
+static DEVICE_ATTR(rear3_tilt, S_IRUGO, camera_rear3_tilt_show, NULL);
+#endif
 #if NOTYETDONE
 static DEVICE_ATTR(rear3_mtf_exif, S_IRUGO, camera_rear3_mtf_exif_show, NULL);
 #endif
@@ -2497,7 +2501,12 @@ static int imgsensor_rom_read_common(unsigned char *pRomData, struct imgsensor_e
 	max_num_of_rom_info = ARRAY_SIZE(vendor_rom_info);
 	pr_info("[%s]max_num_of_rom_info: %d \n", __func__, max_num_of_rom_info);
 
-	for (i = 0; i < max_num_of_rom_info; i++) {
+	for (i = 0; i <= max_num_of_rom_info; i++) {
+		if (i == max_num_of_rom_info) {
+			pr_err("[%s] fail, no searched rom_info \n", __func__);
+			return -1;
+		}
+
 		if (vendor_rom_info[i].rom_addr != NULL &&
 			vendor_rom_info[i].sensor_position == info->sensor_position &&
 			vendor_rom_info[i].sensor_id_with_rom == info->sensor_id) {
@@ -2508,10 +2517,6 @@ static int imgsensor_rom_read_common(unsigned char *pRomData, struct imgsensor_e
 					info->sensor_position, info->sensor_id);
 			break;
 		}
-	}
-	if (i == max_num_of_rom_info) {
-		pr_err("[%s] fail, no searched rom_info \n", __func__);
-		return -1;
 	}
 
 crc_retry:
@@ -2963,17 +2968,18 @@ const struct imgsensor_vendor_rom_addr *imgsensor_sys_get_rom_addr_by_id(
 	max_num_of_rom_info = ARRAY_SIZE(vendor_rom_info);
 	pr_info("[%s]max_num_of_rom_info: %d\n", __func__, max_num_of_rom_info);
 
-	for (i = 0; i < max_num_of_rom_info; i++) {
+	for (i = 0; i <= max_num_of_rom_info; i++) {
+		if (i == max_num_of_rom_info) {
+			pr_err("[%s] fail, no searched rom_info, device id: %#06x, sensor id: %#06x\n",
+					__func__, remapped_device_id, sensorId);
+			return NULL;
+		}
+
 		if (vendor_rom_info[i].rom_addr != NULL &&
 			vendor_rom_info[i].sensor_position == remapped_device_id &&
 			vendor_rom_info[i].sensor_id_with_rom == sensorId) {
 			break;
 		}
-	}
-	if (i == max_num_of_rom_info) {
-		pr_err("[%s] fail, no searched rom_info, device id: %#06x, sensor id: %#06x\n",
-				__func__, remapped_device_id, sensorId);
-		return NULL;
 	}
 	return vendor_rom_info[i].rom_addr;
 }
@@ -3016,7 +3022,7 @@ int imgsensor_sysfs_update(unsigned char* pRomData, unsigned int dualDeviceId, u
 	if (deviceIdx == IMGSENSOR_SENSOR_IDX_NONE)
 		return -1;
 
-	ret = cal_size = imgsensor_sys_get_cal_size_by_device_id(deviceIdx, sensorId);
+	cal_size = imgsensor_sys_get_cal_size_by_device_id(deviceIdx, sensorId);
 	if (offset != 0 || i4RetValue != cal_size) {
 		pr_err("%s : read size NG, read size: %#06x, cal_size: %#06x\n", __func__, i4RetValue, cal_size);
 		return -1;
@@ -3028,8 +3034,7 @@ int imgsensor_sysfs_update(unsigned char* pRomData, unsigned int dualDeviceId, u
 	eeprom_read_info.sensor_id           = sensorId;
 	eeprom_read_info.sub_sensor_position = remapped_device_id;
 	eeprom_read_info.use_common_eeprom   = false;
-	if (imgsensor_rom_read_common(pRomData, &eeprom_read_info) < 0)
-		ret = -1;
+	ret = imgsensor_rom_read_common(pRomData, &eeprom_read_info);
 
 	init_cam_hwparam(remapped_device_id);
 	if (cam_infos[deviceIdx].includes_sub) {
@@ -3300,10 +3305,6 @@ static int create_rear3_sysfs(struct kobject *svc)
 		printk(KERN_ERR "failed to create rear3 device file, %s\n",
 			dev_attr_rear3_dualcal_size.attr.name);
 	}
-	if (device_create_file(camera_rear_dev, &dev_attr_rear3_tilt) < 0) {
-		printk(KERN_ERR "failed to create rear3 device file, %s\n",
-			dev_attr_rear3_tilt.attr.name);
-	}
 #endif
 	if (device_create_file(camera_rear_dev, &dev_attr_rear3_camfw) < 0) {
 		printk(KERN_ERR "failed to create rear3 device file, %s\n",
@@ -3325,6 +3326,12 @@ static int create_rear3_sysfs(struct kobject *svc)
 		printk(KERN_ERR "failed to create rear3 device file, %s\n",
 			dev_attr_rear3_camtype.attr.name);
 	}
+#if defined(REAR_SUB_CAMERA)
+	if (device_create_file(camera_rear_dev, &dev_attr_rear3_tilt) < 0) {
+		printk(KERN_ERR "failed to create rear3 device file, %s\n",
+			dev_attr_rear3_tilt.attr.name);
+	}
+#endif
 	if (device_create_file(camera_rear_dev, &dev_attr_rear3_hwparam) < 0) {
 			printk(KERN_ERR "failed to create rear3 device file, %s\n",
 					dev_attr_rear3_hwparam.attr.name);
@@ -3538,9 +3545,11 @@ void imgsensor_destroy_rear3_sysfs(void)
 	device_remove_file(camera_rear_dev, &dev_attr_rear3_checkfw_user);
 	device_remove_file(camera_rear_dev, &dev_attr_rear3_checkfw_factory);
 	device_remove_file(camera_rear_dev, &dev_attr_rear3_sensorid_exif);
+#if defined(REAR_SUB_CAMERA)
 	device_remove_file(camera_rear_dev, &dev_attr_rear3_dualcal);
 	device_remove_file(camera_rear_dev, &dev_attr_rear3_dualcal_size);
 	device_remove_file(camera_rear_dev, &dev_attr_rear3_tilt);
+#endif
 #if NOTYETDONE
 	device_remove_file(camera_rear_dev, &dev_attr_rear3_mtf_exif);
 #endif

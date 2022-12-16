@@ -19,7 +19,6 @@
 #include <linux/task_integrity.h>
 #include <linux/proca.h>
 #include <linux/xattr.h>
-#include <linux/version.h>
 
 #include "five.h"
 #include "five_pa.h"
@@ -27,40 +26,24 @@
 #include "five_lv.h"
 #include "five_porting.h"
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0))
-#define F_SIGNATURE(file) ((void *)((file)->android_oem_data1))
-
-static inline void f_signature_assign(struct file *file, void *f_signature)
-{
-	file->android_oem_data1 = (u64)f_signature;
-}
-#else
-#define F_SIGNATURE(file) ((void *)((file)->android_vendor_data1))
-
-static inline void f_signature_assign(struct file *file, void *f_signature)
-{
-	file->android_vendor_data1 = (u64)f_signature;
-}
-#endif
-
 static void process_file(struct task_struct *task, struct file *file)
 {
 	char *xattr_value = NULL;
 
-	if (F_SIGNATURE(file))
+	if (file->f_signature)
 		return;
 
 	if (five_check_params(task, file))
 		return;
 
 	five_read_xattr(d_real_comp(file->f_path.dentry), &xattr_value);
-	f_signature_assign(file, xattr_value);
+	file->f_signature = xattr_value;
 }
 
 void fivepa_fsignature_free(struct file *file)
 {
-	kfree(F_SIGNATURE(file));
-	f_signature_assign(file, NULL);
+	kfree(file->f_signature);
+	file->f_signature = NULL;
 }
 
 int proca_fcntl_setxattr(struct file *file, void __user *lv_xattr)
@@ -97,7 +80,7 @@ int proca_fcntl_setxattr(struct file *file, void __user *lv_xattr)
 
 	inode_lock(inode);
 
-	if (task_integrity_allow_sign(TASK_INTEGRITY(current))) {
+	if (task_integrity_allow_sign(current->integrity)) {
 		rc = __vfs_setxattr_noperm(d_real_comp(file->f_path.dentry),
 						XATTR_NAME_PA,
 						x,

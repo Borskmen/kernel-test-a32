@@ -1,18 +1,3 @@
-/*
- *  Copyright (C) 2020, Samsung Electronics Co. Ltd. All Rights Reserved.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- */
-
 #ifndef __SHUB_SENSOR_H_
 #define __SHUB_SENSOR_H_
 
@@ -38,7 +23,7 @@ struct sensor_spec_t {
 	uint8_t uid;
 	uint8_t name[15];
 	uint8_t vendor;
-	uint32_t version;
+	uint16_t version;
 	uint8_t is_wake_up;
 	int32_t min_delay;
 	uint32_t max_delay;
@@ -57,19 +42,19 @@ struct sensor_funcs {
 	void (*report_event)(void);
 	int (*inject_additional_data)(char *, int);
 	void (*print_debug)(void);
-	int (*parsing_data)(char *, int *, int);
+	int (*parsing_data)(char *, int *);
 	int (*set_position)(int);
 	int (*get_position)(void);
-	int (*init_chipset)(void);
+	int (*init_chipset)(char *, char *);
 	int (*open_calibration_file)(void);
-	/* if receive_event_size is 0, you can check parsing error in this func */
-	int (*get_sensor_value)(char *, int *, struct sensor_event *, int);
+	void (*get_sensor_value)(char *, int *, struct sensor_event *);
 };
 
 struct shub_sensor {
-	struct sensor_spec_t spec;
 	int type;
 	char name[SENSOR_NAME_MAX];
+	char chipset_name[15];
+	char vendor[15];
 	bool report_mode_continuous;
 
 	bool enabled;

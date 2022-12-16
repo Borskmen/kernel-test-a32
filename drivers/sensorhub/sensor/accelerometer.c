@@ -1,18 +1,3 @@
-/*
- *  Copyright (C) 2020, Samsung Electronics Co. Ltd. All Rights Reserved.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- */
-
 #include "../comm/shub_comm.h"
 #include "../sensorhub/shub_device.h"
 #include "../sensormanager/shub_sensor.h"
@@ -116,10 +101,9 @@ get_accelerometer_function_pointer *get_acc_funcs_ary[] = {
 	get_accelometer_lsm6dsl_function_pointer,
 	get_accelometer_lis2dlc12_function_pointer,
 	get_accelometer_lsm6dsotr_function_pointer,
-	get_accelometer_icm42632m_function_pointer,
 };
 
-static int init_accelerometer_chipset(void)
+static int init_accelerometer_chipset(char *name, char *vendor)
 {
 	struct shub_sensor *sensor = get_sensor(SENSOR_TYPE_ACCELEROMETER);
 	struct accelerometer_data *data = (struct accelerometer_data *)sensor->data;
@@ -131,8 +115,11 @@ static int init_accelerometer_chipset(void)
 	if (data->chipset_funcs)
 		return 0;
 
-	for (i = 0; i < ARRAY_SIZE(get_acc_funcs_ary); i++) {
-		funcs = get_acc_funcs_ary[i](sensor->spec.name);
+	strcpy(sensor->chipset_name, name);
+	strcpy(sensor->vendor, vendor);
+
+	for (i = 0; i < ARRAY_LEN(get_acc_funcs_ary); i++) {
+		funcs = get_acc_funcs_ary[i](name);
 		if (funcs) {
 			data->chipset_funcs = funcs;
 			break;
@@ -140,7 +127,7 @@ static int init_accelerometer_chipset(void)
 	}
 
 	if (!data->chipset_funcs) {
-		shub_errf("cannot find accelerometer sensor chipset");
+		shub_errf("cannot find accelerometer sensor chipset (%s)", name);
 		return -EINVAL;
 	}
 

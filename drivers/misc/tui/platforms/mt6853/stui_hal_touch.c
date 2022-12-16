@@ -8,27 +8,39 @@
 
 #include "stui_core.h"
 #include "stui_hal.h"
+#include <linux/spinlock.h>
 #include <linux/input/stui_inf.h>
 
-extern int stui_tsp_enter(void);
-extern int stui_tsp_exit(void);
-extern int stui_tsp_type(void);
-
 static int touch_requested;
+static DEFINE_SPINLOCK(stui_touch_lock);
+static int (*stui_tsp_enter_cb)(void);
+static int (*stui_tsp_exit_cb)(void);
+
+int stui_set_info(int (*tsp_enter_cb)(void), int (*tsp_exit_cb)(void), uint32_t touch_type)
+{
+	spin_lock(&stui_touch_lock);
+	if (stui_tsp_enter_cb || stui_tsp_exit_cb) {
+		spin_unlock(&stui_touch_lock);
+		pr_err("[STUI] tsp handlers already set\n");
+		return -EBUSY;
+	}
+
+	stui_tsp_enter_cb = tsp_enter_cb;
+	stui_tsp_exit_cb = tsp_exit_cb;
+	stui_set_touch_type(touch_type);
+	spin_unlock(&stui_touch_lock);
+
+	return 0;
+}
 
 static int request_touch(void)
 {
 	int ret = 0;
-	int tsp_type = 0;
-
-	tsp_type = stui_tsp_type();
-	if (tsp_type)
-		stui_set_touch_type(tsp_type);
 
 	if (touch_requested == 1)
 		return -EALREADY;
 
-	ret = stui_tsp_enter();
+	ret = stui_tsp_enter_cb();
 	if (ret) {
 		pr_err("[STUI] stui_tsp_enter failed:%d\n", ret);
 		return ret;
@@ -36,7 +48,6 @@ static int request_touch(void)
 
 	touch_requested = 1;
 	pr_info(KERN_DEBUG "[STUI] Touch requested\n");
-	pr_info(KERN_DEBUG "[STUI] tsp_type %d\n", tsp_type);
 
 	return ret;
 }
@@ -48,7 +59,7 @@ static int release_touch(void)
 	if (touch_requested != 1)
 		return -EALREADY;
 
-	ret = stui_tsp_exit();
+	ret = stui_tsp_exit_cb();
 	if (ret) {
 		pr_err("[STUI] stui_tsp_exit failed : %d\n", ret);
 		return ret;

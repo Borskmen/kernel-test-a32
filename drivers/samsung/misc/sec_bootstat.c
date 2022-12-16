@@ -162,7 +162,7 @@ void sec_boot_stat_get_start_kernel(void)
 
 void sec_boot_stat_add_initcall(const char *s)
 {
-	int i = 0;
+	size_t i = 0;
 	unsigned long long t = 0;
 
 	for (i = 0; i < ARRAY_SIZE(boot_initcall); i++) {
@@ -194,7 +194,7 @@ void sec_enhanced_boot_stat_record(const char *buf)
 static int prev;
 void sec_boot_stat_add(const char *c)
 {
-	int i = 0;
+	size_t i = 0;
 	unsigned long long t = 0;
 
 	if (bootcompleted && !ebs_finished) {
@@ -274,7 +274,8 @@ void print_format(struct boot_event *data,
 
 static int sec_boot_stat_proc_show(struct seq_file *m, void *v)
 {
-	int i = 0, last_time = 0;
+	size_t i = 0;
+	unsigned int last_time = 0;
 #ifdef CONFIG_SEC_DEVICE_BOOTSTAT
 	struct device_init_time_entry *entry;
 #endif
@@ -297,8 +298,10 @@ static int sec_boot_stat_proc_show(struct seq_file *m, void *v)
 	seq_puts(m, "---------------------------------------------------------------------------------------------------------\n");
 	i = 0;
 	do {
-		print_format(boot_events, m, i, boot_events[i].time - last_time);
-		last_time = boot_events[i].time;
+		if (boot_events[i].time != 0) {
+			print_format(boot_events, m, i, boot_events[i].time - last_time);
+			last_time = boot_events[i].time;
+		}
 
 		if (i != boot_events[i].order)
 		i = boot_events[i].order;

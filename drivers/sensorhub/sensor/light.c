@@ -1,37 +1,23 @@
-/*
- *  Copyright (C) 2020, Samsung Electronics Co. Ltd. All Rights Reserved.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- */
-
 #include "../comm/shub_comm.h"
 #include "../sensorhub/shub_device.h"
 #include "../sensormanager/shub_sensor.h"
 #include "../sensormanager/shub_sensor_manager.h"
 #include "../utility/shub_utility.h"
+#ifdef CONFIG_SHUB_PANEL
+#include "../others/shub_panel.h"
+#endif
 #include "light.h"
 
 #include <linux/of_gpio.h>
 #include <linux/slab.h>
 
+uint32_t temp_ddi_support;
 
 static void init_light_variable(struct light_data *data)
 {
-	struct shub_system_info *system_info = get_shub_system_info();
-
 	data->brightness = -1;
 	data->raw_data_size = 2;
-
-	set_light_ddi_support(system_info->support_ddi);
+	set_light_ddi_support(temp_ddi_support);
 }
 
 static void parse_dt_light(struct device *dev)
@@ -124,12 +110,14 @@ int set_light_region(struct light_data *data)
 #endif
 
 
-int init_light_chipset(void)
+int init_light_chipset(char *name, char *vendor)
 {
 	struct shub_sensor *sensor = get_sensor(SENSOR_TYPE_LIGHT);
 	struct light_data *data = sensor->data;
 
 	shub_infof("");
+	strcpy(sensor->chipset_name, name);
+	strcpy(sensor->vendor, vendor);
 
 	parse_dt_light(get_shub_device());
 	init_light_variable(data);
@@ -138,7 +126,40 @@ int init_light_chipset(void)
 
 void set_light_ddi_support(uint32_t ddi_support)
 {
+#ifdef CONFIG_SHUB_PANEL
+	struct shub_sensor *light_sensor = get_sensor(SENSOR_TYPE_LIGHT);
+	struct light_data *data;
+	int prev;
+
 	shub_infof("%d", ddi_support);
+	if (!light_sensor) {
+		temp_ddi_support = ddi_support;
+		return;
+	}
+	data = light_sensor->data;
+	prev = data->ddi_support;
+	data->ddi_support = (bool)ddi_support;
+
+	if (prev != data->ddi_support) {
+		struct shub_sensor *light_cct_sensor = get_sensor(SENSOR_TYPE_LIGHT_CCT);
+		struct light_cct_event *cct_value = NULL;
+
+		if (light_cct_sensor)
+			cct_value = (struct light_cct_event *)(light_cct_sensor->event_buffer.value);
+
+		if (data->ddi_support) {
+			init_shub_panel_notifier();
+			if (cct_value)
+				light_cct_sensor->receive_event_size += sizeof(cct_value->roi);
+		} else {
+			remove_shub_panel_notifier();
+			if (cct_value)
+				light_cct_sensor->receive_event_size -= sizeof(struct light_cct_event::roi);
+		}
+	}
+#else
+	shub_infof("%d", ddi_support);
+#endif
 }
 
 static int sync_light_status(void)
@@ -229,7 +250,7 @@ int inject_light_additional_data(char *buf, int count)
 	return ret;
 }
 
-int get_light_sensor_value(char *dataframe, int *index, struct sensor_event *event, int frame_len)
+void get_light_sensor_value(char *dataframe, int *index, struct sensor_event *event)
 {
 	struct shub_sensor *sensor = get_sensor(SENSOR_TYPE_LIGHT);
 	struct light_data *data = sensor->data;
@@ -254,8 +275,6 @@ int get_light_sensor_value(char *dataframe, int *index, struct sensor_event *eve
 	*index += sizeof(sensor_value->a_gain);
 	memcpy(&sensor_value->brightness, dataframe + *index, sizeof(sensor_value->brightness));
 	*index += sizeof(sensor_value->brightness);
-
-	return 0;
 }
 
 int init_light(bool en)
@@ -290,6 +309,11 @@ int init_light(bool en)
 		sensor->funcs->get_sensor_value = get_light_sensor_value;
 	} else {
 		struct light_data *data = get_sensor(SENSOR_TYPE_LIGHT)->data;
+
+#ifdef CONFIG_SHUB_PANEL
+		if (sensor->data->ddi_support)
+			remove_shub_panel();
+#endif
 
 		kfree(data->light_coef);
 		data->light_coef = NULL;

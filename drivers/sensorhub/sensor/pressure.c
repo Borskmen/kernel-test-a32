@@ -1,18 +1,3 @@
-/*
- *  Copyright (C) 2020, Samsung Electronics Co. Ltd. All Rights Reserved.
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- */
-
 #include "../comm/shub_comm.h"
 #include "../debug/shub_debug.h"
 #include "../sensor/pressure.h"
@@ -30,10 +15,8 @@
 
 typedef struct pressure_chipset_funcs *(get_pressure_function_pointer)(char *);
 get_pressure_function_pointer *get_pressure_funcs_ary[] = {
-	get_pressure_bmp580_function_pointer,
 	get_pressure_lps22hh_function_pointer,
 };
-
 
 static unsigned int parse_int(const char *s, unsigned int base, int *p)
 {
@@ -122,24 +105,24 @@ static void parse_dt_pressure(struct device *dev)
 
 	if (of_property_read_u32(np, "pressure-sw-offset", &data->sw_offset)) {
 		shub_infof("no sw-offset");
-		data->sw_offset_default = 0;
 		data->sw_offset = 0;
-	} else {
-		data->sw_offset_default = data->sw_offset;
 	}
 }
 
-int init_pressure_chipset(void)
+int init_pressure_chipset(char *name, char *vendor)
 {
-	uint64_t i;
+	int i;
 	struct shub_sensor *sensor = get_sensor(SENSOR_TYPE_PRESSURE);
 	struct pressure_data *data = (struct pressure_data *)(sensor->data);
 	struct pressure_chipset_funcs *funcs;
 
 	shub_infof("");
 
+	strcpy(sensor->chipset_name, name);
+	strcpy(sensor->vendor, vendor);
+
 	for (i = 0; i < ARRAY_SIZE(get_pressure_funcs_ary); i++) {
-		funcs = get_pressure_funcs_ary[i](sensor->spec.name);
+		funcs = get_pressure_funcs_ary[i](name);
 		if (funcs) {
 			data->chipset_funcs = funcs;
 			if (data->chipset_funcs->init)
@@ -147,23 +130,19 @@ int init_pressure_chipset(void)
 			break;
 		}
 	}
-
 	if (!data->chipset_funcs) {
-		shub_errf("cannot find magnetometer sensor chipset");
+		shub_errf("cannot find magnetometer sensor chipset.");
 		return -EINVAL;
 	}
-
 	parse_dt_pressure(get_shub_device());
-
 	return 0;
 }
 
-int sync_pressure_status(void)
+int sync_pressure_status()
 {
 	shub_infof();
 	return 0;
 }
-
 
 static void report_pressure_event(void)
 {
@@ -172,13 +151,10 @@ static void report_pressure_event(void)
 	struct sensor_event *event = &(sensor->event_buffer);
 	struct pressure_event *sensor_value = (struct pressure_event *)(event->value);
 	struct pressure_data *data = sensor->data;
-
 	shub_infof("%d %d %d", sensor_value->pressure, data->sw_offset,  data->convert_coef);
-
 	sensor_value->pressure -= data->sw_offset * data->convert_coef / 100;
 #endif
 }
-
 void print_pressure_debug(void)
 {
 	struct shub_sensor *sensor = get_sensor(SENSOR_TYPE_PRESSURE);
@@ -196,7 +172,6 @@ static int open_pressure_files(void)
 	shub_infof("");
 	open_pressure_calibration_file();
 	open_pressure_sw_offset_file();
-
 	return 0;
 }
 
@@ -204,9 +179,7 @@ static int enable_pressure_sensor(void)
 {
 	struct shub_sensor *sensor = get_sensor(SENSOR_TYPE_PRESSURE);
 	struct pressure_data *data = sensor->data;
-
 	shub_infof("so %d", data->sw_offset);
-
 	return 0;
 }
 
@@ -214,9 +187,7 @@ static int disable_pressure_sensor(void)
 {
 	struct shub_sensor *sensor = get_sensor(SENSOR_TYPE_PRESSURE);
 	struct pressure_data *data = sensor->data;
-
 	shub_infof("so %d", data->sw_offset);
-
 	return 0;
 }
 
@@ -243,14 +214,12 @@ int init_pressure(bool en)
 		sensor->data = kzalloc(sizeof(struct pressure_data), GFP_KERNEL);
 		if (!sensor->data)
 			goto err_no_mem;
-
 		sensor->funcs->enable = enable_pressure_sensor;
 		sensor->funcs->disable = disable_pressure_sensor;
 		sensor->funcs->print_debug = print_pressure_debug;
 		sensor->funcs->init_chipset = init_pressure_chipset;
 		sensor->funcs->open_calibration_file = open_pressure_files;
 		sensor->funcs->report_event = report_pressure_event;
-
 	} else {
 		kfree(sensor->funcs);
 		sensor->funcs = NULL;

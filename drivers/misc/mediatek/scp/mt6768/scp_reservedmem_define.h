@@ -16,8 +16,7 @@
 
 static struct scp_reserve_mblock scp_reserve_mblock[] = {
 #ifdef CONFIG_MTK_VOW_SUPPORT
-#if defined(CONFIG_MTK_VOW_AMAZON_SUPPORT) || \
-	defined(CONFIG_MTK_VOW_GVA_SUPPORT)
+#ifdef CONFIG_MTK_VOW_2E2K_SUPPORT
 	{
 		.num = VOW_MEM_ID,
 		.start_phys = 0x0,
@@ -84,12 +83,14 @@ static struct scp_reserve_mblock scp_reserve_mblock[] = {
 		.size = 0x18000, /* 96KB */
 	},
 #endif
+#ifdef CONFIG_MTK_VOW_BARGE_IN_SUPPORT
 	{
 		.num = VOW_BARGEIN_MEM_ID,
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.size = 0x4600,  /* 17KB */
 	},
+#endif
 #ifdef SCP_PARAMS_TO_SCP_SUPPORT
 	{
 		.num = SCP_DRV_PARAMS_MEM_ID,

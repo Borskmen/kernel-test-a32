@@ -93,7 +93,7 @@ bool ccu_ipc_getIObuffer(void **ipcInDataPtr, void **ipcOutDataPtr,
 int ccu_ipc_send(struct ccu_msg *msg)
 {
 	uint32_t loopCount = 0;
-	uint32_t  ackValue = 0;
+	uint32_t ackValue = 0;
 	bool timeout = false;
 	uint32_t write_cnt = 0;
 	uint32_t read_cnt = 0;

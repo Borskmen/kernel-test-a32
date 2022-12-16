@@ -30,7 +30,7 @@
 #include <linux/usb/typec/common/pdic_notifier.h>
 
 #define TYPEC_MANAGER_MAJ_VERSION 2
-#define TYPEC_MANAGER_MIN_VERSION 1
+#define TYPEC_MANAGER_MIN_VERSION 0
 
 /* USB TypeC Manager notifier call sequence,
  * largest priority number device will be called first. */
@@ -86,11 +86,6 @@ struct typec_manager_event_work
 	MANAGER_NOTI_TYPEDEF event;
 };
 
-struct manager_dwork {
-	struct delayed_work dwork;
-	bool pending;
-};
-
 struct manager_dp {
 	int is_support;
 	int attach_state;
@@ -113,13 +108,6 @@ struct typec_manager_muic {
 	int cable_type;
 };
 
-struct typec_manager_usb {
-	uint dr;
-	int enum_state;
-	bool enable_state;
-	int ufp_repeat_check;
-};
-
 typedef struct _manager_data_t
 {
 	struct blocking_notifier_head manager_muic_notifier;
@@ -136,28 +124,30 @@ typedef struct _manager_data_t
 	struct delayed_work manager_init_work;
 	struct workqueue_struct *manager_noti_wq;
 	struct workqueue_struct *manager_muic_noti_wq;
-	struct manager_dwork usb_enum_check;
-	struct manager_dwork usb_event_by_vbus;
+	struct delayed_work usbenumchk_work;
+	struct delayed_work chkforvbus_work;
 
 	struct mutex mo_lock;
 	int vbus_state;
 	int classified_cable_type;
 
 	int pdic_attach_state;
+	int manager_dr_state;
 	int pdic_rid_state;
 	int alt_is_support;
 	int usb_factory;
+
+	int usb_enum_state;
+	bool usb_enable_state;
 
 	unsigned long otg_stamp;
 	int vbus_by_otg_detection;
 
 	int pd_con_state;
-	int svid_info;
 	void *pd;
 
 	char fac_control[16];
 
-	struct typec_manager_usb usb;
 	struct typec_manager_muic muic;
 #ifdef CONFIG_USE_SECOND_MUIC
 	struct typec_manager_muic second_muic;
@@ -189,15 +179,13 @@ struct typec_manager_gadget_ops {
 #endif
 
 /* Timeout for USB off when Vbus is in LOW state */
-#define VBUS_USB_OFF_TIMEOUT 2000
+#define VBUS_USB_OFF_TIMEOUT 1000
 
 /* Time to check whether it is VBUS by OTG to prevent moisture popup error */
 #define OTG_VBUS_CHECK_TIME 300
 
 /* Time to retry when Notifier registration fails */
 #define NOTIFIER_REG_RETRY 2000
-
-#define UFP_REPEAT_ERROR 3
 
 #define MANAGER_NOTIFIER_BLOCK(name)	\
 	struct notifier_block (name)

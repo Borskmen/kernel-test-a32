@@ -21,6 +21,7 @@ mrdump-objs-y := \
 	mrdump_control.o \
 	mrdump_hw.o \
 	mrdump_full.o \
+	mrdump_key_setup.o \
 	mrdump_mini.o \
 	mrdump_panic.o
 

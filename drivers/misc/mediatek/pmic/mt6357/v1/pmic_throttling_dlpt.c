@@ -131,7 +131,7 @@ void register_low_battery_notify(
 {
 	PMICLOG("[%s] start\n", __func__);
 
-	lbcb_tb[(unsigned int)prio_val].lbcb = low_battery_callback;
+	lbcb_tb[prio_val].lbcb = low_battery_callback;
 
 	pr_info("[%s] prio_val=%d\n", __func__, prio_val);
 }
@@ -242,6 +242,7 @@ int __attribute__ ((weak)) dlpt_check_power_off(void)
  *******************************************************************/
 #define OCCB_NUM 16
 
+
 #if defined(CONFIG_BATTERY_SAMSUNG) || defined(CONFIG_BATTERY_SAMSUNG_V2) \
 	|| (CONFIG_MTK_GAUGE_VERSION != 30)
 #define DISABLE_BATTERY_OC_PROTECT
@@ -272,9 +273,6 @@ int __attribute__ ((weak)) dlpt_check_power_off(void)
 #define bat_oc_h_thd(cur)   \
 (65535-(cur*fg_cust_data.r_fg_value*1000/UNIT_FGCURRENT* \
 	95*100/fg_cust_data.car_tune_value))
-#else
-
-#define bat_oc_h_thd(cur)   1
 
 #endif /* end of #if CONFIG_MTK_GAUGE_VERSION == 30 */
 
@@ -302,7 +300,7 @@ void register_battery_oc_notify(
 {
 	PMICLOG("[%s] start\n", __func__);
 
-	occb_tb[(unsigned int)prio_val].occb = battery_oc_callback;
+	occb_tb[prio_val].occb = battery_oc_callback;
 
 	pr_info("[%s] prio_val=%d\n", __func__, prio_val);
 }
@@ -469,7 +467,7 @@ void register_battery_percent_notify(
 {
 	PMICLOG("[%s] start\n", __func__);
 
-	bpcb_tb[(unsigned int)prio_val].bpcb = battery_percent_callback;
+	bpcb_tb[prio_val].bpcb = battery_percent_callback;
 
 	pr_info("[%s] prio_val=%d\n", __func__, prio_val);
 
@@ -804,7 +802,7 @@ void register_dlpt_notify(
 {
 	PMICLOG("[%s] start\n", __func__);
 
-	dlpt_cb_tb[(unsigned int)prio_val].dlpt_cb = dlpt_callback;
+	dlpt_cb_tb[prio_val].dlpt_cb = dlpt_callback;
 
 	pr_info("[%s] prio_val=%d\n", __func__, prio_val);
 
@@ -1042,6 +1040,7 @@ int get_dlpt_imix(void)
 	return imix;
 
 }
+
 #if (CONFIG_MTK_GAUGE_VERSION == 30)
 static int get_dlpt_imix_charging(void)
 {

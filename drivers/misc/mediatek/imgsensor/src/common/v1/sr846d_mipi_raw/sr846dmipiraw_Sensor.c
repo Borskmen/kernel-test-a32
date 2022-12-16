@@ -27,7 +27,6 @@
 	pr_info(PFX "[%s] " format, __func__, ##args)
 
 static DEFINE_SPINLOCK(imgsensor_drv_lock);
-static kal_uint32 streaming_control(kal_bool enable);
 
 #define per_frame 1
 
@@ -1806,7 +1805,6 @@ static kal_uint32 open(void)
 }	/*	open  */
 static kal_uint32 close(void)
 {
-	streaming_control(KAL_FALSE);
 	return ERROR_NONE;
 }	/*	close  */
 

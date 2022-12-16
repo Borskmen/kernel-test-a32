@@ -23,6 +23,10 @@
 #include "mtk_cpufreq_hybrid.h"
 #include "mtk_cpufreq_opp_table.h"
 
+#ifdef CONFIG_CPU_FREQ_LIMIT
+#include <linux/cpufreq_limit.h>
+#endif
+
 /*
  * Global Variables
  */
@@ -480,7 +484,7 @@ static int _cpufreq_set_locked(struct cpufreq_policy *policy,
 #endif
 	FUNC_ENTER(FUNC_LV_HELP);
 
-	if (pll_p == NULL || dvfs_disable_flag == 1)
+	if (dvfs_disable_flag == 1)
 		return 0;
 
 	if (!policy) {
@@ -718,10 +722,6 @@ static void _hps_request_wrapper(struct mt_cpu_dvfs *p,
 	struct mt_cpu_dvfs *act_p;
 
 	act_p = id_to_cpu_dvfs(*id);
-
-	if (act_p == NULL)
-		return;
-
 	/* action switch */
 	switch (action & ~CPU_TASKS_FROZEN) {
 	case CPUFREQ_CPU_ONLINE:
@@ -943,8 +943,6 @@ static int _mt_cpufreq_setup_freqs_table(struct cpufreq_policy *policy,
 	FUNC_ENTER(FUNC_LV_LOCAL);
 
 	p = id_to_cpu_dvfs(_get_cpu_dvfs_id(policy->cpu));
-	if (p == NULL)
-		return ret;
 
 	ret = cpufreq_frequency_table_cpuinfo(policy, p->freq_tbl_for_cpufreq);
 
@@ -1040,8 +1038,6 @@ static void ppm_limit_callback(struct ppm_client_req req)
 			ppm->cpu_limit[i].advise_cpufreq_idx);
 
 		p = id_to_cpu_dvfs(i);
-		if (p == NULL)
-			return;
 
 		if (ppm->cpu_limit[i].has_advise_freq) {
 			p->idx_opp_ppm_base =
@@ -1125,9 +1121,6 @@ static int _mt_cpufreq_init(struct cpufreq_policy *policy)
 		unsigned int lv = _mt_cpufreq_get_cpu_level();
 		struct opp_tbl_info *opp_tbl_info;
 		struct opp_tbl_m_info *opp_tbl_m_info;
-
-		if (p == NULL)
-			return ret;
 
 		cpufreq_ver_dbg("DVFS: %s: %s(cpu_id = %d)\n",
 			__func__, cpu_dvfs_get_name(p), p->cpu_id);
@@ -1401,6 +1394,9 @@ static int __init _mt_cpufreq_tbl_init(void)
 			p->opp_tbl = opp_tbl_info->opp_tbl;
 			p->nr_opp_tbl = opp_tbl_info->size;
 			p->freq_tbl_for_cpufreq = table;
+#ifdef CONFIG_CPU_FREQ_LIMIT
+			cpufreq_limit_set_table(p->cpu_id, table);
+#endif
 		}
 	}
 	return 0;

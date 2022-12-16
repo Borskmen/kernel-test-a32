@@ -46,6 +46,7 @@ struct syna_tcm_board_data {
 	bool swap_axes;
 	int irq_gpio;
 	int irq_on_state;
+	int cs_gpio;
 	int power_gpio;
 	int power_on_state;
 	int reset_gpio;
@@ -63,6 +64,11 @@ struct syna_tcm_board_data {
 	unsigned long irq_flags;
 	const char *pwr_reg_name;
 	const char *bus_reg_name;
+	const char *fw_name;
+	struct pinctrl *pinctrl;
+	u32	area_indicator;
+	u32	area_navigation;
+	u32	area_edge;
 };
 
 #endif

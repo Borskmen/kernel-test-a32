@@ -13,6 +13,7 @@
  *
  */
 
+
 #include "../sensorhub/shub_device.h"
 #include "../comm/shub_iio.h"
 #include "../sensormanager/shub_sensor_type.h"
@@ -52,8 +53,8 @@ static int create_dump_bin_file(void)
 	shub_infof();
 
 	sensorhub_dump = kvzalloc(sensorhub_dump_size, GFP_KERNEL);
-	if (ZERO_OR_NULL_PTR(sensorhub_dump)) {
-		shub_infof("fail to alloc memory");
+	if (PTR_ERR_OR_ZERO(sensorhub_dump)) {
+		shub_infof("memory alloc failed");
 		return -EINVAL;
 	}
 
@@ -74,7 +75,6 @@ static int create_dump_bin_file(void)
 
 	if (ret < 0) {
 		kvfree(sensorhub_dump);
-		sensorhub_dump = NULL;
 		sensorhub_dump_size = 0;
 	}
 
@@ -83,11 +83,17 @@ static int create_dump_bin_file(void)
 
 void write_shub_dump_file(char *dump, int dumpsize, int type, int count)
 {
+	int ret;
 	char buffer[3];
 
 	if (!dump) {
 		shub_errf("dump is NULL");
 		return;
+	} else if (sensorhub_dump_size == 0) {
+		sensorhub_dump_size = dumpsize;
+		ret = create_dump_bin_file();
+		if (ret < 0)
+			return;
 	} else if (dumpsize != sensorhub_dump_size) {
 		shub_errf("dump size is wrong %d(%d)", dumpsize, sensorhub_dump_size);
 		return;
@@ -106,9 +112,6 @@ void write_shub_dump_file(char *dump, int dumpsize, int type, int count)
 void initialize_shub_dump(void)
 {
 	shub_infof();
-
-	sensorhub_dump_size = sensorhub_get_dump_size();
-	create_dump_bin_file();
 }
 
 void remove_shub_dump(void)

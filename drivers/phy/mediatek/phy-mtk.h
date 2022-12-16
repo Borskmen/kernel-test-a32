@@ -49,7 +49,6 @@ struct mtk_phy_instance {
 	int phy_data_cnt;
 };
 
-
 struct mtk_phy_interface {
 	int  (*usb_phy_init)(struct mtk_phy_instance *instance);
 	void (*usb_phy_savecurrent)(struct mtk_phy_instance *instance);

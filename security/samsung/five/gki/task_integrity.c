@@ -24,14 +24,14 @@ static struct kmem_cache *task_integrity_cache;
 
 static void init_once(void *foo)
 {
-	struct task_integrity *tint = foo;
+	struct task_integrity *intg = foo;
 
-	memset(tint, 0, sizeof(*tint));
-	spin_lock_init(&tint->value_lock);
-	spin_lock_init(&tint->list_lock);
+	memset(intg, 0, sizeof(*intg));
+	spin_lock_init(&intg->value_lock);
+	spin_lock_init(&intg->list_lock);
 }
 
-int __init five_task_integrity_cache_init(void)
+static int __init task_integrity_cache_init(void)
 {
 	task_integrity_cache = kmem_cache_create("task_integrity_cache",
 			sizeof(struct task_integrity), 0,
@@ -43,22 +43,24 @@ int __init five_task_integrity_cache_init(void)
 	return 0;
 }
 
+security_initcall(task_integrity_cache_init);
+
 struct task_integrity *task_integrity_alloc(void)
 {
-	struct task_integrity *tint;
+	struct task_integrity *intg;
 
-	tint = kmem_cache_alloc(task_integrity_cache, GFP_KERNEL);
-	if (tint) {
-		atomic_set(&tint->usage_count, 1);
-		INIT_LIST_HEAD(&tint->events.list);
+	intg = kmem_cache_alloc(task_integrity_cache, GFP_KERNEL);
+	if (intg) {
+		atomic_set(&intg->usage_count, 1);
+		INIT_LIST_HEAD(&intg->events.list);
 	}
 
-	return tint;
+	return intg;
 }
 
-void task_integrity_free(struct task_integrity *tint)
+void task_integrity_free(struct task_integrity *intg)
 {
-	if (tint) {
+	if (intg) {
 		/* These values should be changed under "value_lock" spinlock.
 		   But then lockdep prints warning because this function can be called
 		   from sw-irq (from function free_task).
@@ -66,19 +68,19 @@ void task_integrity_free(struct task_integrity *tint)
 		   only if usage_count is 0 (no reference to this struct),
 		   so changing these values without spinlock is safe.
 		*/
-		kfree(tint->label);
-		tint->label = NULL;
-		tint->user_value = INTEGRITY_NONE;
-		tint->value = INTEGRITY_NONE;
-		atomic_set(&tint->usage_count, 0);
+		kfree(intg->label);
+		intg->label = NULL;
+		intg->user_value = INTEGRITY_NONE;
+		intg->value = INTEGRITY_NONE;
+		atomic_set(&intg->usage_count, 0);
 
-		tint->reset_cause = CAUSE_UNSET;
-		if (tint->reset_file) {
-			fput(tint->reset_file);
-			tint->reset_file = NULL;
+		intg->reset_cause = CAUSE_UNSET;
+		if (intg->reset_file) {
+			fput(intg->reset_file);
+			intg->reset_file = NULL;
 		}
 
-		kmem_cache_free(task_integrity_cache, tint);
+		kmem_cache_free(task_integrity_cache, intg);
 	}
 }
 
@@ -182,15 +184,15 @@ char const * const tint_reset_cause_to_string(
  * Only first call of this function per task will have effect, because first
  * reason will be root cause.
  */
-void task_integrity_set_reset_reason(struct task_integrity *tint,
+void task_integrity_set_reset_reason(struct task_integrity *intg,
 	enum task_integrity_reset_cause cause, struct file *file)
 {
-	if (tint->reset_cause != CAUSE_UNSET)
+	if (intg->reset_cause != CAUSE_UNSET)
 		return;
 
-	tint->reset_cause = cause;
+	intg->reset_cause = cause;
 	if (file) {
 		get_file(file);
-		tint->reset_file = file;
+		intg->reset_file = file;
 	}
 }

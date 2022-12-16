@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2013-2017,2020 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2017 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -56,6 +56,6 @@
  * (Customize to match platform CPU layout... 0xF0 for big cores only for ex).
  * If not defined TEE dynamically using all platform CPUs (recommended)
  */
- #define PLAT_DEFAULT_TEE_AFFINITY_MASK (0xC0)
+/* #define PLAT_DEFAULT_TEE_AFFINITY_MASK (0xXX)  */
 
 #endif /* _MC_DRV_PLATFORM_H_ */

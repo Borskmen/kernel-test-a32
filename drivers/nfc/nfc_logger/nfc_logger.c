@@ -19,7 +19,6 @@
 #include <linux/proc_fs.h>
 #include <linux/time.h>
 #include <linux/uaccess.h>
-#include <linux/ktime.h>
 #if LINUX_VERSION_CODE > KERNEL_VERSION(4, 10, 0)
 #include <linux/sched/clock.h>
 #else
@@ -46,7 +45,6 @@ static int is_nfc_logger_init;
 static int is_buf_full;
 static int log_max_count = -1;
 static void (*print_nfc_status)(void);
-struct proc_dir_entry *g_entry;
 
 /* set max log count, if count is -1, no limit */
 void nfc_logger_set_max_count(int count)
@@ -57,11 +55,11 @@ void nfc_logger_set_max_count(int count)
 void nfc_logger_print_date_time(void)
 {
 	char tmp[64] = {0x0, };
-	struct timespec64 ts;
+	struct timespec ts;
 	struct tm tm;
 	unsigned long sec;
 
-	ktime_get_real_ts64(&ts);
+	getnstimeofday(&ts);
 	sec = ts.tv_sec - (sys_tz.tz_minuteswest * 60);
 	time64_to_tm(sec, 0, &tm);
 	snprintf(tmp, sizeof(tmp), "@%02d-%02d %02d:%02d:%02d.%03lu", tm.tm_mon + 1, tm.tm_mday,
@@ -124,7 +122,7 @@ void nfc_logger_register_nfc_stauts_func(void (*print_status_callback)(void))
 void nfc_print_hex_dump(void *buf, void *pref, size_t size)
 {
 	uint8_t *ptr = buf;
-	size_t i;
+	uint32_t i;
 	char tmp[128] = {0x0, };
 	char *ptmp = tmp;
 	int len;
@@ -184,16 +182,10 @@ static ssize_t nfc_logger_read(struct file *file, char __user *buf, size_t len, 
 	return count;
 }
 
-#if KERNEL_VERSION(5, 6, 0) <= LINUX_VERSION_CODE
-static const struct proc_ops nfc_logger_ops = {
-	.proc_read = nfc_logger_read,
-};
-#else
 static const struct file_operations nfc_logger_ops = {
 	.owner = THIS_MODULE,
 	.read = nfc_logger_read,
 };
-#endif
 
 int nfc_logger_init(void)
 {
@@ -212,18 +204,7 @@ int nfc_logger_init(void)
 	is_nfc_logger_init = 1;
 	nfc_logger_print("nfc logger init ok\n");
 
-	g_entry = entry;
-
 	return 0;
-}
-
-void nfc_logger_deinit(void)
-{
-	if (!g_entry)
-		return;
-
-	proc_remove(g_entry);
-	g_entry = NULL;
 }
 
 #ifdef CONFIG_SEC_NFC_LOGGER_ADD_ACPM_LOG
@@ -248,7 +229,7 @@ void nfc_logger_acpm_log_print(void)
 	if (!acpm_get_nfc_log_buf(&acpm_log, &last_ptr, &len)) {
 		for (i = 0; i < len; i++) {
 			rtc = nfc_logger_acpm_get_rtc_time();
-			NFC_LOG_INFO("rtc[%u] - acpm[%2d][%d] %d\n",
+			NFC_LOG_INFO("rtc: %u - acpm [%d] time: %d, is_on: %d\n",
 				rtc, i, acpm_log[i].timestamp, acpm_log[i].is_on);
 		}
 	}

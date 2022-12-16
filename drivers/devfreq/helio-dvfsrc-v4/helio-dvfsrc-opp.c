@@ -26,34 +26,22 @@ int get_cur_vcore_dvfs_opp(void)
 
 void set_opp_table(int vcore_dvfs_opp, int vcore_uv, int ddr_khz)
 {
-	if (vcore_dvfs_opp >= VCORE_DVFS_OPP_NUM || vcore_dvfs_opp < 0)
-		return;
-
 	opp_table[vcore_dvfs_opp].vcore_uv = vcore_uv;
 	opp_table[vcore_dvfs_opp].ddr_khz = ddr_khz;
 }
 
 void set_vcore_opp(int vcore_dvfs_opp, int vcore_opp)
 {
-	if (vcore_dvfs_opp >= VCORE_DVFS_OPP_NUM || vcore_dvfs_opp < 0)
-		return;
-
 	vcore_dvfs_to_vcore_opp[vcore_dvfs_opp] = vcore_opp;
 }
 
 int get_vcore_opp(int opp)
 {
-	if (opp >= VCORE_DVFS_OPP_NUM || opp < 0)
-		return 0;
-
 	return vcore_dvfs_to_vcore_opp[opp];
 }
 
 int get_vcore_uv(int opp)
 {
-	if (opp >= VCORE_DVFS_OPP_NUM || opp < 0)
-		return 0;
-
 	return opp_table[opp].vcore_uv;
 }
 
@@ -80,32 +68,23 @@ int get_cur_vcore_uv(void)
 
 	idx = get_cur_vcore_dvfs_opp();
 
-	if (idx >= VCORE_DVFS_OPP_NUM || idx < 0)
+	if (idx >= VCORE_DVFS_OPP_NUM)
 		return 0;
 	return opp_table[idx].vcore_uv;
 }
 
 void set_ddr_opp(int vcore_dvfs_opp, int ddr_opp)
 {
-	if (vcore_dvfs_opp >= VCORE_DVFS_OPP_NUM || vcore_dvfs_opp < 0)
-		return;
-
 	vcore_dvfs_to_ddr_opp[vcore_dvfs_opp] = ddr_opp;
 }
 
 int get_ddr_opp(int opp)
 {
-	if (opp >= VCORE_DVFS_OPP_NUM || opp < 0)
-		return 0;
-
 	return vcore_dvfs_to_ddr_opp[opp];
 }
 
 int get_ddr_khz(int opp)
 {
-	if (opp >= VCORE_DVFS_OPP_NUM || opp < 0)
-		return 0;
-
 	return opp_table[opp].ddr_khz;
 }
 
@@ -118,7 +97,7 @@ int get_cur_ddr_opp(void)
 
 	idx = get_cur_vcore_dvfs_opp();
 
-	if (idx >= VCORE_DVFS_OPP_NUM || idx < 0)
+	if (idx >= VCORE_DVFS_OPP_NUM)
 		return DDR_OPP_UNREQ;
 	return vcore_dvfs_to_ddr_opp[idx];
 }
@@ -132,7 +111,7 @@ int get_cur_ddr_khz(void)
 
 	idx = get_cur_vcore_dvfs_opp();
 
-	if (idx >= VCORE_DVFS_OPP_NUM || idx < 0)
+	if (idx >= VCORE_DVFS_OPP_NUM)
 		return 0;
 	return opp_table[idx].ddr_khz;
 }

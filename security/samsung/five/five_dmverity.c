@@ -19,7 +19,6 @@
 
 #include "five_dmverity.h"
 #include "five.h"
-#include "five_testing.h"
 
 #include "drivers/md/dm.h"
 #include "drivers/block/loop.h"
@@ -29,79 +28,17 @@
 #endif
 
 #if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP) || defined(CONFIG_FIVE_DEBUG)
-__visible_for_testing
-bool check_prebuilt_paths_dmverity;
+static bool check_prebuilt_paths_dmverity;
 #endif
 
 static inline int __init init_fs(void);
-
-__visible_for_testing __mockable
-struct mapped_device *call_dm_get_md(dev_t dev)
-{
-	return dm_get_md(dev);
-}
-
-__visible_for_testing __mockable
-struct dm_table *call_dm_get_live_table(
-	struct mapped_device *md, int *srcu_idx)
-{
-	return dm_get_live_table(md, srcu_idx);
-}
-
-__visible_for_testing __mockable
-fmode_t call_dm_table_get_mode(struct dm_table *t)
-{
-	return dm_table_get_mode(t);
-}
-
-__visible_for_testing __mockable
-unsigned int call_dm_table_get_num_targets(struct dm_table *t)
-{
-	return dm_table_get_num_targets(t);
-}
-
-__visible_for_testing __mockable
-struct dm_target *call_dm_table_get_target(
-		struct dm_table *t, unsigned int index)
-{
-	return dm_table_get_target(t, index);
-}
-
-__visible_for_testing __mockable
-void call_dm_put_live_table(struct mapped_device *md, int srcu_idx)
-{
-	dm_put_live_table(md, srcu_idx);
-	return;
-}
-
-__visible_for_testing __mockable
-void call_dm_put(struct mapped_device *md)
-{
-	dm_put(md);
-	return;
-}
-
-__visible_for_testing __mockable
-struct block_device *call_blkdev_get_by_dev(
-		dev_t dev, fmode_t mode, void *holder)
-{
-	return blkdev_get_by_dev(dev, mode, holder);
-}
-
-__visible_for_testing __mockable
-void call_blkdev_put(struct block_device *bdev, fmode_t mode)
-{
-	blkdev_put(bdev, mode);
-	return;
-}
 
 int __init five_init_dmverity(void)
 {
 	return init_fs();
 }
 
-__visible_for_testing
-bool is_loop_device(const struct file *file)
+static bool is_loop_device(const struct file *file)
 {
 	const struct inode *inode;
 
@@ -122,8 +59,7 @@ bool is_loop_device(const struct file *file)
  * - There is only one enabled target in the device mapper table.
  * - The target name is known target name.
  */
-__visible_for_testing
-enum five_dmverity_codes is_dmverity_partition(
+static enum five_dmverity_codes is_dmverity_partition(
 		const struct file *file)
 {
 	const char dm_dev_prefix[] = "dm-";
@@ -153,7 +89,7 @@ enum five_dmverity_codes is_dmverity_partition(
 		goto exit;
 	}
 
-	md = call_dm_get_md(i_sb->s_dev);
+	md = dm_get_md(i_sb->s_dev);
 	if (!md) {
 		result = FIVE_DMV_NO_DM_DEVICE;
 		goto exit;
@@ -176,19 +112,19 @@ enum five_dmverity_codes is_dmverity_partition(
 		goto exit_free_dm;
 	}
 
-	table = call_dm_get_live_table(md, &srcu_idx);
+	table = dm_get_live_table(md, &srcu_idx);
 	if (!table) {
 		result = FIVE_DMV_NO_DM_TABLE;
 		goto exit_free_dm;
 	}
 
-	if (call_dm_table_get_mode(table) & ~FMODE_READ) {
+	if (dm_table_get_mode(table) & ~FMODE_READ) {
 		result = FIVE_DMV_NOT_READONLY_DM_TABLE;
 		goto exit_free_table;
 	}
 
-	num_targets = call_dm_table_get_num_targets(table);
-	target = call_dm_table_get_target(table, 0);
+	num_targets = dm_table_get_num_targets(table);
+	target = dm_table_get_target(table, 0);
 	if (!target) {
 		result = FIVE_DMV_NO_DM_TARGET;
 		goto exit_free_table;
@@ -212,16 +148,14 @@ enum five_dmverity_codes is_dmverity_partition(
 	}
 
 exit_free_table:
-	call_dm_put_live_table(md, srcu_idx);
+	dm_put_live_table(md, srcu_idx);
 exit_free_dm:
-	call_dm_put(md);
+	dm_put(md);
 exit:
 	return result;
 }
 
-__visible_for_testing
-enum five_dmverity_codes is_dmverity_loop(
-	const struct file *file)
+static enum five_dmverity_codes is_dmverity_loop(const struct file *file)
 {
 	const fmode_t mode_bdev = FMODE_READ;
 	enum five_dmverity_codes result = FIVE_DMV_NO_SB_LOOP_DEVICE;
@@ -238,7 +172,7 @@ enum five_dmverity_codes is_dmverity_loop(
 	if (MAJOR(i_sb->s_dev) != LOOP_MAJOR)
 		goto exit;
 
-	bdev = call_blkdev_get_by_dev(i_sb->s_dev, mode_bdev, NULL);
+	bdev = blkdev_get_by_dev(i_sb->s_dev, mode_bdev, NULL);
 	if (IS_ERR_OR_NULL(bdev) || MAJOR(bdev->bd_dev) != LOOP_MAJOR) {
 		result = FIVE_DMV_NO_BD_LOOP_DEVICE;
 		goto exit;
@@ -265,7 +199,7 @@ enum five_dmverity_codes is_dmverity_loop(
 	result = is_dmverity_partition(file_mount_to_lo_dev);
 
 exit_free_blkdev:
-	call_blkdev_put(bdev, mode_bdev);
+	blkdev_put(bdev, mode_bdev);
 exit:
 	return result;
 }
@@ -301,7 +235,7 @@ bool five_is_dmverity_protected(const struct file *file)
 static bool is_dmverity_prebuit_path(const struct file *file)
 {
 	const char * const paths[] = {
-		"/system/", "/system_ext/", "/vendor/", "/apex/",
+		"/system/", "/vendor/", "/apex/",
 		"/product/", "/odm/", "/prism/", "/optics/"
 	};
 	const char *pathname = NULL;

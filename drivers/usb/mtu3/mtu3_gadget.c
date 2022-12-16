@@ -19,13 +19,6 @@
 #include "mtu3.h"
 #include "mtu3_dr.h"
 #include <linux/usb/composite.h>
-#ifdef CONFIG_USB_MTU3_PLAT_PHONE
-#include <mt-plat/mtk_boot.h>
-#endif
-
-#if IS_ENABLED(CONFIG_USB_NOTIFY_LAYER)
-#include <linux/usb_notify.h>
-#endif
 
 void mtu3_req_complete(struct mtu3_ep *mep,
 		     struct usb_request *req, int status)
@@ -617,26 +610,14 @@ static int mtu3_gadget_pullup(struct usb_gadget *gadget, int is_on)
 			mtu3_nuke_all_ep(mtu);
 	}
 
-#if defined(CONFIG_USB_NOTIFY_PROC_LOG)
-	if (is_on)
-		store_usblog_notify(NOTIFY_USBSTATE,
-			(void *)"USB_STATE=PULLUP:EN:SUCCESS", NULL);
-	else
-		store_usblog_notify(NOTIFY_USBSTATE,
-			(void *)"USB_STATE=PULLUP:DIS:SUCCESS", NULL);
-#endif
-
 	if (is_usb_rdy() == false && is_on)
 		set_usb_rdy();
 
 	spin_unlock_irqrestore(&mtu->lock, flags);
 	#ifdef CONFIG_USB_MTU3_PLAT_PHONE
 	/* Trigger connection when force on*/
-	if ((mtu3_cable_mode == CABLE_MODE_FORCEON) ||
-		(get_boot_mode() == META_BOOT) ||
-		(get_boot_mode() == ADVMETA_BOOT)) {
-		dev_info(mtu->dev, "%s CABLE_MODE_FORCEON or META_MODE\n",
-			__func__);
+	if (mtu3_cable_mode == CABLE_MODE_FORCEON) {
+		dev_info(mtu->dev, "%s CABLE_MODE_FORCEON\n", __func__);
 		ssusb_set_mailbox(&mtu->ssusb->otg_switch,
 			MTU3_VBUS_VALID);
 	}
@@ -723,6 +704,22 @@ static int mtu3_gadget_stop(struct usb_gadget *g)
 	return 0;
 }
 
+extern void BATTERY_SetUSBState(int usb_state_value);
+
+static int mtu3_gadget_vbus_draw(struct usb_gadget *gadget, unsigned mA)
+{
+	struct mtu3 *mtu = gadget_to_mtu3(gadget);
+
+	dev_info(mtu->dev, "%s %d mA\n", __func__, mA);
+
+	if (mA >= 500)
+		BATTERY_SetUSBState(2);
+	else
+		BATTERY_SetUSBState(0);
+
+	return 0;
+}
+
 static const struct usb_gadget_ops mtu3_gadget_ops = {
 	.get_frame = mtu3_gadget_get_frame,
 	.wakeup = mtu3_gadget_wakeup,
@@ -730,6 +727,7 @@ static const struct usb_gadget_ops mtu3_gadget_ops = {
 	.pullup = mtu3_gadget_pullup,
 	.udc_start = mtu3_gadget_start,
 	.udc_stop = mtu3_gadget_stop,
+	.vbus_draw = mtu3_gadget_vbus_draw,
 };
 
 static void mtu3_state_reset(struct mtu3 *mtu)
@@ -882,6 +880,8 @@ void mtu3_gadget_disconnect(struct mtu3 *mtu)
 
 	mtu3_state_reset(mtu);
 	usb_gadget_set_state(&mtu->g, USB_STATE_NOTATTACHED);
+
+	mtu3_gadget_vbus_draw(&mtu->g, 0);
 }
 
 void mtu3_gadget_reset(struct mtu3 *mtu)
@@ -898,4 +898,6 @@ void mtu3_gadget_reset(struct mtu3 *mtu)
 		mtu3_gadget_disconnect(mtu);
 	else
 		mtu3_state_reset(mtu);
+
+	mtu3_gadget_vbus_draw(&mtu->g, 0);
 }

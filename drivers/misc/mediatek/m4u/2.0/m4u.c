@@ -1648,8 +1648,9 @@ static int __m4u_sec_init(void)
 		M4UERR("m4u exec command fail\n");
 		goto out;
 	}
-
-	ret = ctx->m4u_msg->rsp;
+	M4ULOG_HIGH("%s ret:0x%x, rsp:0x%x\n",
+		__func__, ret, ctx->m4u_msg->rsp);
+	/*ret = ctx->m4u_msg->rsp;*/
 out:
 	for (i = 0; i < SMI_LARB_NR; i++)
 		larb_clock_off(i, 1);
@@ -1758,7 +1759,7 @@ static struct mc_session_handle m4u_dci_session;
 static struct m4u_msg *m4u_dci_msg;
 #endif
 
-int m4u_sec_init(void)
+static int m4u_sec_init_nolock(void)
 {
 	int ret;
 #if defined(CONFIG_TRUSTONIC_TEE_SUPPORT) && \
@@ -1828,6 +1829,19 @@ m4u_sec_reinit:
 	/* don't deinit ta because of multiple init operation */
 
 	return 0;
+}
+
+int m4u_sec_init(void)
+{
+	int ret;
+#ifdef M4U_TEE_SERVICE_ENABLE
+		mutex_lock(&gM4u_sec_init);
+#endif
+		ret = m4u_sec_init_nolock();
+#ifdef M4U_TEE_SERVICE_ENABLE
+		mutex_unlock(&gM4u_sec_init);
+#endif
+	return ret;
 }
 
 int m4u_config_port_tee(struct M4U_PORT_STRUCT *pM4uPort)	/* native */
@@ -2388,9 +2402,9 @@ static long MTK_M4U_ioctl(struct file *filp, unsigned int cmd,
 	case MTK_M4U_T_SEC_INIT: {
 		M4UMSG("MTK M4U ioctl : MTK_M4U_T_SEC_INIT command!! 0x%x\n",
 		       cmd);
-		mutex_lock(&gM4u_sec_init);
+//		mutex_lock(&gM4u_sec_init);
 		ret = m4u_sec_init();
-		mutex_unlock(&gM4u_sec_init);
+//		mutex_unlock(&gM4u_sec_init);
 	} break;
 #endif
 #ifdef M4U_GZ_SERVICE_ENABLE
