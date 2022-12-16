@@ -26,7 +26,7 @@ jobs:
         NAME: Custom-Kernel-A32
       with:
         arch: arm64
-        compiler: proton-clang/master/binutils
+        compiler: clang/10/binutils
         defconfig: a32_eur_open_defconfig
         image: Image.gz
         
