@@ -1,1 +1,0 @@
-obj-y += pressure_lps22hh.o
