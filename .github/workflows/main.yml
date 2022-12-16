@@ -20,7 +20,7 @@ jobs:
         path: zipper
 
     - name: Android kernel build
-      uses: alix1383/android-kernel-actions@master
+      uses: alix1383/android-kernel-actions@master #I'm not stealing your fork just adding xz-utils when you add it to the entrypoint tell me.
       id: build
       env:
         NAME: Custom-Kernel-A32
