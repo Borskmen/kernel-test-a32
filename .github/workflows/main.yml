@@ -27,7 +27,7 @@ jobs:
       with:
         arch: arm64
         compiler: clang/10/binutils
-        defconfig: a32_eur_open_defconfig
+        defconfig: a32_defconfig
         image: Image.gz
         
     - name: Release
