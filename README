@@ -1,12 +1,18 @@
-(Don't worry I'am gonna make a better Readme)
-Pls don't blame my English, my first language is French.
+Linux kernel
+============
 
-Features I know they work :
+This file was moved to Documentation/admin-guide/README.rst
 
-- SElinux can be permissive
+Please notice that there are several guides for kernel developers and users.
+These guides can be rendered in a number of formats, like HTML and PDF.
 
-To-do :
+In order to build the documentation, use ``make htmldocs`` or
+``make pdfdocs``.
 
-- Optimize performance and kernel (CPU gouvernor, I/o shedule, ...)
-- Fix MTP on GSI
-- Tell me your idea with a issue or on XDA dev (https://forum.xda-developers.com/t/kernel-help-me-build-a-custom-kernel-for-this-messed-up-phone.4526535/)
+There are various text files in the Documentation/ subdirectory,
+several of them using the Restructured Text markup notation.
+See Documentation/00-INDEX for a list of what is contained in each file.
+
+Please read the Documentation/process/changes.rst file, as it contains the
+requirements for building and running the kernel, and information about
+the problems which may result by upgrading your kernel.
