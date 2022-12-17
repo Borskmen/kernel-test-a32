@@ -4,6 +4,9 @@ Pls don't blame my English, my first language is French.
 Features I know they work :
 
 - SElinux can be permissive
+- Add KVM support
+- disable kernel panic (not sure about that)
+- interactive cpu gouvernor
 
 To-do :
 
